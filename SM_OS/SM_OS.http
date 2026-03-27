@@ -1,0 +1,6 @@
+@SM_OS_HostAddress = http://localhost:5291
+
+GET {{SM_OS_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
