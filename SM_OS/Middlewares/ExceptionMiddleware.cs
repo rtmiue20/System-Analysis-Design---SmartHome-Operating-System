@@ -1,14 +1,19 @@
 ﻿using System.Net;
 using System.Text.Json; // Dùng cái này thay vì Newtonsoft
 
+
 namespace SM_OS.Middlewares
 {
     public class ExceptionMiddleware
     {
         private readonly RequestDelegate _next;
+        private readonly ILogger<ExceptionMiddleware> _logger;
 
-        public ExceptionMiddleware(RequestDelegate next) => _next = next;
-
+        public ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger)
+        {
+            _next = next;
+            _logger = logger;
+        }
         public async Task Invoke(HttpContext context)
         {
             try
@@ -17,6 +22,8 @@ namespace SM_OS.Middlewares
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Lỗi xảy ra tại: {Path}", context.Request.Path);
+
                 context.Response.ContentType = "application/json";
                 context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
 

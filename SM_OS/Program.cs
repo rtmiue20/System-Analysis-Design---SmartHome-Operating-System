@@ -7,9 +7,17 @@ using SM_OS.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// --- CẤU HÌNH SERILOG TẠI ĐÂY ---
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console() // Ghi log ra màn hình đen (Console)
+    .WriteTo.File("Logs/smarthome_log.txt", rollingInterval: RollingInterval.Day) // Ghi vào file theo ngày
+    .CreateLogger();
+
+builder.Host.UseSerilog();
 
 // 1. Cấu hình kết nối MariaDB/MySQL
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");

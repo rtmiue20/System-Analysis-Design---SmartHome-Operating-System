@@ -1,8 +1,10 @@
-﻿using SM_OS.DTOs;
+﻿using Microsoft.AspNetCore.SignalR;
+using SM_OS.DTOs;
 using SM_OS.Entities;
 using SM_OS.Mappers;
 using SM_OS.Repositories.Interfaces;
 using SM_OS.Services.Interfaces;
+using SM_OS.Hubs;
 
 namespace SM_OS.Services
 {
@@ -10,11 +12,12 @@ namespace SM_OS.Services
     {
         private readonly IDevicesRepository _deviceRepo;
         private readonly IRoomRepository _roomRepo; // Cần check xem phòng có tồn tại không
-
-        public DevicesService(IDevicesRepository deviceRepo, IRoomRepository roomRepo)
+        private readonly ILogger<DevicesService> _logger; // Ghi log
+        public DevicesService(IDevicesRepository deviceRepo, IRoomRepository roomRepo, ILogger<DevicesService> logger)
         {
             _deviceRepo = deviceRepo;
             _roomRepo = roomRepo;
+            _logger = logger;
         }
 
         public async Task<IEnumerable<SmartDevice>> GetAllDevicesAsync() => await _deviceRepo.GetAllAsync();
@@ -31,13 +34,26 @@ namespace SM_OS.Services
             return await _deviceRepo.CreateAsync(device);
         }
 
-        public async Task<bool> UpdateStatusAsync(int id, string status)
+        public async Task<bool> UpdateStatusAsync(int id, string status, string userName)
         {
             var device = await _deviceRepo.GetByIdAsync(id);
-            if (device == null) return false;
-
+            if (device == null)
+            {
+                // Ghi log cảnh báo khi không tìm thấy thiết bị
+                _logger.LogWarning("Không tìm thấy thiết bị ID {Id} để cập nhật", id);
+                return false;
+            }
             device.Status = status;
-            return await _deviceRepo.UpdateAsync(device);
+            var result = await _deviceRepo.UpdateAsync(device);
+
+            if (result)
+            {
+                // ĐÂY CHÍNH LÀ LƯU VẾT: Ai? (userName), Làm gì? (status), Lúc nào? (Serilog tự ghi)
+                _logger.LogInformation("Người dùng {User} đã đổi trạng thái thiết bị {Id} sang {Status}",
+                                        userName, id, status);
+            }
+
+            return result;
         }
 
         public async Task<bool> DeleteDeviceAsync(int id) => await _deviceRepo.DeleteAsync(id);

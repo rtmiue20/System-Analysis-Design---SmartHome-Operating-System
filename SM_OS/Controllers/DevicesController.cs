@@ -26,7 +26,8 @@ namespace SM_OS.Controllers
         [HttpPatch("{id}/status")]
         public async Task<IActionResult> UpdateStatus(int id, [FromBody] string status)
         {
-            var success = await _deviceService.UpdateStatusAsync(id, status);
+            var userName = User.Identity?.Name ?? "Unknown User";
+            var success = await _deviceService.UpdateStatusAsync(id, status, userName);
             return success ? Ok("Cập nhật trạng thái thành công") : NotFound();
         }
     }
