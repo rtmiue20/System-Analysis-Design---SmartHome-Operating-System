@@ -7,5 +7,6 @@ namespace SM_OS.Services.Interfaces
     {
         Task<User?> RegisterAsync(UserRegisterDTO dto);
         Task<User?> LoginAsync(string username, string password);
+        string GenerateJwtToken(User user);
     }
 }

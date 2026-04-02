@@ -25,7 +25,13 @@ namespace SM_OS.Controllers
         {
             var user = await _userService.LoginAsync(request.Username, request.Password);
             if (user == null) return Unauthorized("Sai tài khoản hoặc mật khẩu");
-            return Ok(user.ToResponseDto());
+            var token = _userService.GenerateJwtToken(user);
+            return Ok(new
+            {
+                message = "Đăng nhập thành công",
+                token = token,
+                user = user.ToResponseDto()
+            });
         }
     }
 
