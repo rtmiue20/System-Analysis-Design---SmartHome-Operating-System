@@ -63,6 +63,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseMiddleware<SM_OS.Middlewares.ExceptionMiddleware>();
 app.UseAuthentication();
 // Chèn Middleware cho Authorization nếu sau này bạn làm Login/JWT
 app.UseAuthorization();
