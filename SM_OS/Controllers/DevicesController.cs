@@ -1,5 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using SM_OS.DTOs;
+using SM_OS.Hubs;
+using SM_OS.Hubs.Interface;
 using SM_OS.Mappers;
 using SM_OS.Services.Interfaces;
 
@@ -10,7 +13,13 @@ namespace SM_OS.Controllers
     public class DevicesController : ControllerBase
     {
         private readonly IDevicesService _deviceService;
-        public DevicesController(IDevicesService deviceService) => _deviceService = deviceService;
+        private readonly IHubContext<SmartHomeHub, ISmartHomeClient> _hubContext;
+
+        public DevicesController(IDevicesService deviceService, IHubContext<SmartHomeHub, ISmartHomeClient> hubContext)
+        {
+            _deviceService = deviceService;
+            _hubContext = hubContext;
+        }
 
         [HttpGet]
         public async Task<IActionResult> GetAll() => Ok(await _deviceService.GetAllDevicesAsync());
@@ -28,7 +37,16 @@ namespace SM_OS.Controllers
         {
             var userName = User.Identity?.Name ?? "Unknown User";
             var success = await _deviceService.UpdateStatusAsync(id, status, userName);
-            return success ? Ok("Cập nhật trạng thái thành công") : NotFound();
+            if (success)
+            {
+                bool isDeviceOn = status.Equals("On", StringComparison.OrdinalIgnoreCase) ||
+                                  status.Equals("True", StringComparison.OrdinalIgnoreCase);
+
+                await _hubContext.Clients.All.ReceiveDeviceUpdate(id, isDeviceOn);
+
+                return Ok("Cập nhật trạng thái thành công");
+            }
+            return NotFound();
         }
     }
 }
