@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SM_OS.Entities;
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -8,8 +9,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 /// </summary>
 public class SceneAction
 {
-	public SceneAction()
-	{
+
         [Key]
         public int Id { get; set; }
 
@@ -23,5 +23,5 @@ public class SceneAction
         public int SmartDeviceId { get; set; }
         [ForeignKey("SmartDeviceId")]
         public SmartDevice SmartDevice { get; set; } = null!;
-    }
+    
 }

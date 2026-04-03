@@ -8,7 +8,7 @@ namespace SM_OS.Services.Interfaces
         Task<IEnumerable<SmartDevice>> GetAllDevicesAsync();
         Task<SmartDevice?> GetDeviceByIdAsync(int id);
         Task<SmartDevice?> AddDeviceAsync(DeviceCreateDTO dto); // Trả về null nếu RoomId không tồn tại
-        Task<bool> UpdateStatusAsync(int id, string status);
+        Task<bool> UpdateStatusAsync(int id, string status, string userName);
         Task<bool> DeleteDeviceAsync(int id);
     }
 }
