@@ -13,7 +13,14 @@ namespace SM_OS.Services
     public class UsersService : IUsersService
     {
         private readonly IUsersRepository _userRepo;
-        public UsersService(IUsersRepository userRepo) => _userRepo = userRepo;
+
+        private readonly IConfiguration _config;
+
+        public UsersService(IUsersRepository userRepo, IConfiguration config)
+        {
+            _userRepo = userRepo;
+            _config = config;
+        }
 
         public async Task<User?> RegisterAsync(UserRegisterDTO dto)
         {
@@ -39,21 +46,51 @@ namespace SM_OS.Services
             return user;
         }
 
+        //public string GenerateJwtToken(User user)
+        //{
+        //    var claims = new[]
+        //    {
+        //        new Claim(ClaimTypes.Name, user.Username),
+        //        new Claim(ClaimTypes.Role, user.Role)
+        //    };
+
+        //    // Lưu ý: Key phải dài trên 16 ký tự
+        //    var jwtSettings = _config.GetSection("Jwt");
+        //    var keyString = jwtSettings["Key"] ?? "Default_Secret_Key_1234567890123456"; // Cung cấp giá trị mặc định nếu không có trong config
+        //    var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyString));
+        //    var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        //    var token = new JwtSecurityToken(
+        //        issuer: jwtSettings["Issuer"],     // Khớp Issuer
+        //        audience: jwtSettings["Audience"], // Khớp Audience
+        //        claims: claims,
+        //        expires: DateTime.Now.AddHours(2),
+        //        signingCredentials: creds
+        //        );
+
+        //    return new JwtSecurityTokenHandler().WriteToken(token);
+        //}
         public string GenerateJwtToken(User user)
         {
             var claims = new[]
             {
-                new Claim(ClaimTypes.Name, user.Username),
-                new Claim(ClaimTypes.Role, user.Role)
-            };
+        new Claim(ClaimTypes.Name, user.Username),
+        new Claim(ClaimTypes.Role, user.Role)
+    };
 
-            // Lưu ý: Key phải dài trên 16 ký tự
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("your_secret_key_phai_du_dai_tren_16_ky_tu"));
+            var jwtSettings = _config.GetSection("Jwt");
+
+            // Bọc giáp chống null cho cả 3 biến y như Program.cs
+            var keyString = jwtSettings["Key"] ?? "Default_Secret_Key_1234567890123456";
+            var issuer = jwtSettings["Issuer"] ?? "smarthome";
+            var audience = jwtSettings["Audience"] ?? "smarthome";
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyString));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(
-                issuer: "smarthome",
-                audience: "smarthome",
+                issuer: issuer,     // Dùng biến đã bọc giáp
+                audience: audience, // Dùng biến đã bọc giáp
                 claims: claims,
                 expires: DateTime.Now.AddHours(2),
                 signingCredentials: creds

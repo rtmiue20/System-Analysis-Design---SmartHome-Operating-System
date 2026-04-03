@@ -22,12 +22,12 @@ namespace SM_OS.Middlewares
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Lỗi xảy ra tại: {Path}", context.Request.Path);
+                _logger.LogError(ex, "The error occurred at: {Path}", context.Request.Path);
 
                 context.Response.ContentType = "application/json";
                 context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
 
-                var response = new { message = "Đã có lỗi hệ thống: " + ex.Message };
+                var response = new { message = "There has been a system error:" + ex.Message };
 
                 // Dùng JsonSerializer của hệ thống luôn
                 var json = JsonSerializer.Serialize(response);

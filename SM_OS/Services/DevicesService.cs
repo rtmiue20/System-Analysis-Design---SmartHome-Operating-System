@@ -40,7 +40,7 @@ namespace SM_OS.Services
             if (device == null)
             {
                 // Ghi log cảnh báo khi không tìm thấy thiết bị
-                _logger.LogWarning("Không tìm thấy thiết bị ID {Id} để cập nhật", id);
+                _logger.LogWarning("No device ID {Id} found to update", id);
                 return false;
             }
             device.Status = status;
@@ -49,8 +49,7 @@ namespace SM_OS.Services
             if (result)
             {
                 // ĐÂY CHÍNH LÀ LƯU VẾT: Ai? (userName), Làm gì? (status), Lúc nào? (Serilog tự ghi)
-                _logger.LogInformation("Người dùng {User} đã đổi trạng thái thiết bị {Id} sang {Status}",
-                                        userName, id, status);
+                _logger.LogInformation("User {User} has changed the device status {Id} to {Status}",userName, id, status);
             }
 
             return result;

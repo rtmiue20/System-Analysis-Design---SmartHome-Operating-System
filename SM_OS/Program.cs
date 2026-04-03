@@ -44,6 +44,30 @@ builder.Services.AddControllers().AddJsonOptions(options =>
     options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
 });
 
+var jwtSettings = builder.Configuration.GetSection("Jwt");
+//var keyString = jwtSettings["Key"] ?? "Default_Secret_Key_1234567890123456";
+//var key = Encoding.UTF8.GetBytes(keyString);
+
+//builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+//    .AddJwtBearer(options =>
+//    {
+//        options.TokenValidationParameters = new TokenValidationParameters
+//        {
+//            ValidateIssuer = true,
+//            ValidateAudience = true,
+//            ValidateLifetime = true,
+//            ValidateIssuerSigningKey = true,
+//            ValidIssuer = jwtSettings["Issuer"],      // Đọc từ json
+//            ValidAudience = jwtSettings["Audience"],  // Đọc từ json
+//            IssuerSigningKey = new SymmetricSecurityKey(key)
+//        };
+//    });
+var keyString = jwtSettings["Key"] ?? "Default_Secret_Key_1234567890123456";
+var issuer = jwtSettings["Issuer"] ?? "smarthome";
+var audience = jwtSettings["Audience"] ?? "smarthome";
+
+var key = Encoding.UTF8.GetBytes(keyString);
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -53,15 +77,27 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = "smarthome",
-            ValidAudience = "smarthome",
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("your_secret_key_phai_du_dai_tren_16_ky_tu"))
+            ValidIssuer = issuer,      
+            ValidAudience = audience,  
+            IssuerSigningKey = new SymmetricSecurityKey(key)
         };
     });
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddSignalR();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReactApp",
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:5173")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+        });
+});
 
 var app = builder.Build();
 
@@ -73,6 +109,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors("AllowReactApp");
 app.UseMiddleware<SM_OS.Middlewares.ExceptionMiddleware>();
 app.UseAuthentication();
 // Chèn Middleware cho Authorization nếu sau này bạn làm Login/JWT

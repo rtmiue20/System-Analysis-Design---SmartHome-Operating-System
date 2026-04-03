@@ -28,7 +28,7 @@ namespace SM_OS.Controllers
         public async Task<IActionResult> Create(DeviceCreateDTO dto)
         {
             var device = await _deviceService.AddDeviceAsync(dto);
-            if (device == null) return BadRequest("RoomId không tồn tại!");
+            if (device == null) return BadRequest("RoomId does not exist!");
             return Ok(device.ToResponseDto());
         }
 
@@ -44,7 +44,7 @@ namespace SM_OS.Controllers
 
                 await _hubContext.Clients.All.ReceiveDeviceUpdate(id, isDeviceOn);
 
-                return Ok("Cập nhật trạng thái thành công");
+                return Ok("Status update successful");
             }
             return NotFound();
         }
