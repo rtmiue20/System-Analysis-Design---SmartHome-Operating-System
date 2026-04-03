@@ -1,6 +1,8 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Collections.Generic;
+using SM_OS.Entities;
 /// <summary>
 /* Lớp Scene đại diện cho một ngữ cảnh trong hệ thống, bao gồm các hành động liên quan đến một ngữ cảnh cụ thể
 (ví dụ: "Đi ngủ", "Về nhà") mà người dùng có thể thiết lập để tự động hóa các thiết bị thông minh trong nhà.
@@ -8,8 +10,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 /// </summary>
 public class Scene
 {
-	public Scene()
-	{
+	
         [Key]
         public int Id { get; set; }
 
@@ -24,5 +25,5 @@ public class Scene
 
         // Một ngữ cảnh gồm nhiều hành động (ví dụ: bật đèn 1, tắt quạt 2)
         public ICollection<SceneAction> SceneActions { get; set; } = new List<SceneAction>();   
-    }
+    
 }
