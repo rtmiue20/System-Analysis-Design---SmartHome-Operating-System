@@ -1,5 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using SM_OS.Data;
+﻿using SM_OS.Data;
 using SM_OS.Repositories;
 using SM_OS.Repositories.Interfaces;
 using SM_OS.Services;
@@ -9,6 +8,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Serilog;
 using SM_OS.Hubs;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -77,8 +77,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = issuer,      
-            ValidAudience = audience,  
+            ValidIssuer = issuer,
+            ValidAudience = audience,
             IssuerSigningKey = new SymmetricSecurityKey(key)
         };
     });

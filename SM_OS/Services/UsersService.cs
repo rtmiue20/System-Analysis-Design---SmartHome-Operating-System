@@ -7,13 +7,14 @@ using SM_OS.Services.Interfaces;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 
 namespace SM_OS.Services
 {
     public class UsersService : IUsersService
     {
         private readonly IUsersRepository _userRepo;
-
         private readonly IConfiguration _config;
 
         public UsersService(IUsersRepository userRepo, IConfiguration config)
