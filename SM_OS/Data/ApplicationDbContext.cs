@@ -12,6 +12,8 @@ namespace SM_OS.Data
         public DbSet<Room> Rooms { get; set; }
         public DbSet<SmartDevice> SmartDevices { get; set; }
         public DbSet<User> Users { get; set; }
+        public DbSet<Scene> Scenes { get; set; }
+        public DbSet<SceneAction> SceneActions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

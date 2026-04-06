@@ -11,10 +11,10 @@ namespace SM_OS.Repositories
         public DevicesRepository(ApplicationDbContext context) => _context = context;
 
         public async Task<IEnumerable<SmartDevice>> GetAllAsync() =>
-            await _context.SmartDevices.Include(d => d.Room).ToListAsync(); // Lấy tất cả thiết bị thông minh và bao gồm thông tin phòng liên quan
+            await _context.SmartDevices.AsNoTracking().Include(d => d.Room).ToListAsync(); // Lấy tất cả thiết bị thông minh và bao gồm thông tin phòng liên quan - AsNoTracking() để tối ưu hiệu suất khi chỉ đọc dữ liệu mà không cần theo dõi thay đổi
 
         public async Task<SmartDevice?> GetByIdAsync(int id) =>
-            await _context.SmartDevices.FindAsync(id);  // Lấy thiết bị thông minh theo ID, không bao gồm thông tin phòng liên quan
+            await _context.SmartDevices.Include(d => d.Room).FirstOrDefaultAsync(d => d.DeviceId == id);  // Lấy thiết bị thông minh theo ID, không bao gồm thông tin phòng liên quan - AsNoTracking() để tối ưu hiệu suất khi chỉ đọc dữ liệu mà không cần theo dõi thay đổi
 
         public async Task<SmartDevice> CreateAsync(SmartDevice device)  // Tạo mới một thiết bị thông minh và lưu vào DB
         {

@@ -108,7 +108,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 app.UseCors("AllowReactApp");
 app.UseMiddleware<SM_OS.Middlewares.ExceptionMiddleware>();
 app.UseAuthentication();
