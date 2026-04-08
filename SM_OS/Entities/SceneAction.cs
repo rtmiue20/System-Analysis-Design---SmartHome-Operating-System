@@ -7,6 +7,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 /// Lớp SceneAction đại diện cho một hành động cụ thể trong một ngữ cảnh (Scene),
 /// liên kết với một thiết bị thông minh cụ thể và trạng thái mong muốn của thiết bị đó khi ngữ cảnh được kích hoạt.
 /// </summary>
+namespace SM_OS.Entities;
 public class SceneAction
 {
 

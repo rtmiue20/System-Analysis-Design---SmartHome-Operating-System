@@ -48,5 +48,13 @@ namespace SM_OS.Controllers
             }
             return NotFound();
         }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var success = await _deviceService.DeleteDeviceAsync(id);
+            if (!success) return NotFound("This device was not found!");
+            return Ok(new { message = "Device successfully erased." });
+        }
     }
 }

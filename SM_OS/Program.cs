@@ -30,11 +30,13 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddScoped<IRoomRepository, RoomRepository>();
 builder.Services.AddScoped<IDevicesRepository, DevicesRepository>();
 builder.Services.AddScoped<IUsersRepository, UsersRepository>();
+builder.Services.AddScoped<ISceneRepository, SceneRepository>();
 
 // Đăng ký Services
 builder.Services.AddScoped<IRoomService, RoomService>();
 builder.Services.AddScoped<IDevicesService, DevicesService>();
 builder.Services.AddScoped<IUsersService, UsersService>();
+builder.Services.AddScoped<ISceneService, SceneService>();
 
 // 3. Đăng ký các dịch vụ hệ thống
 builder.Services.AddControllers();

@@ -31,6 +31,20 @@ namespace SM_OS.Services
             return await _roomRepo.UpdateAsync(room);
         }
 
-        public async Task<bool> DeleteRoomAsync(int id) => await _roomRepo.DeleteAsync(id);
+        public async Task<bool> DeleteRoomAsync(int id)
+        {
+            // 1. Lấy phòng ra (nhờ hàm GetByIdAsync đã Include sẵn SmartDevices)
+            var room = await _roomRepo.GetByIdAsync(id);
+            if (room == null) return false;
+
+            // 2. Chặn đứng việc xóa nếu phòng đang chứa thiết bị (Chuẩn AC-1.1)
+            if (room.SmartDevices != null && room.SmartDevices.Any())
+            {
+                throw new InvalidOperationException("The room cannot be deleted because there is still equipment inside!");
+            }
+
+            // 3. Nếu phòng trống thì mới gọi Repository để xóa
+            return await _roomRepo.DeleteAsync(id);
+        }
     }
 }

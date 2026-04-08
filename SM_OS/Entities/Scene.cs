@@ -8,6 +8,8 @@ using SM_OS.Entities;
 (ví dụ: "Đi ngủ", "Về nhà") mà người dùng có thể thiết lập để tự động hóa các thiết bị thông minh trong nhà.
 */
 /// </summary>
+namespace SM_OS.Entities;
+
 public class Scene
 {
 	

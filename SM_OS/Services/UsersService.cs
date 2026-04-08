@@ -81,7 +81,6 @@ namespace SM_OS.Services
 
             var jwtSettings = _config.GetSection("Jwt");
 
-            // Bọc giáp chống null cho cả 3 biến y như Program.cs
             var keyString = jwtSettings["Key"] ?? "Default_Secret_Key_1234567890123456";
             var issuer = jwtSettings["Issuer"] ?? "smarthome";
             var audience = jwtSettings["Audience"] ?? "smarthome";
@@ -90,8 +89,8 @@ namespace SM_OS.Services
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(
-                issuer: issuer,     // Dùng biến đã bọc giáp
-                audience: audience, // Dùng biến đã bọc giáp
+                issuer: issuer,     
+                audience: audience, 
                 claims: claims,
                 expires: DateTime.Now.AddHours(2),
                 signingCredentials: creds
@@ -101,3 +100,4 @@ namespace SM_OS.Services
         }
     }
 }
+
