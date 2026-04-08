@@ -1,9 +1,10 @@
-﻿using Moq;
-using Xunit;
-using Microsoft.Extensions.Logging;
-using SM_OS.Services;
-using SM_OS.Repositories.Interfaces;
+﻿using Microsoft.Extensions.Logging;
+using Moq;
+using SM_OS.DTOs;
 using SM_OS.Entities;
+using SM_OS.Repositories.Interfaces;
+using SM_OS.Services;
+using Xunit;
 
 namespace SM_OS.Tests.Services
 {
@@ -76,6 +77,44 @@ namespace SM_OS.Tests.Services
 
             // Assert 
             Assert.False(result);
+        }
+
+        // TEST CASE 3: AddDevice thất bại do RoomId không tồn tại
+        [Fact]
+        public async Task AddDeviceAsync_ShouldReturnNull_WhenRoomNotFound()
+        {
+            // Arrange
+            var dto = new DeviceCreateDTO { RoomId = 99 };
+            // Giả lập kho lưu trữ phòng trả về null (không thấy phòng)
+            _mockRoomRepo.Setup(repo => repo.GetByIdAsync(dto.RoomId)).ReturnsAsync((Room?)null);
+
+            // Act
+            var result = await _devicesService.AddDeviceAsync(dto);
+
+            // Assert
+            Assert.Null(result); // Đảm bảo Service trả về null như logic đã viết
+        }
+
+        // TEST CASE 4: AddDevice thành công
+        [Fact]
+        public async Task AddDeviceAsync_ShouldReturnDevice_WhenRoomExists()
+        {
+            // Arrange
+            var dto = new DeviceCreateDTO { RoomId = 1, Name = "Quạt" };
+            var mockRoom = new Room { RoomId = 1, RoomName = "Phòng khách" };
+
+            _mockRoomRepo.Setup(repo => repo.GetByIdAsync(dto.RoomId)).ReturnsAsync(mockRoom);
+
+            // Setup Repo tạo mới thiết bị và trả về thực thể đó
+            _mockDeviceRepo.Setup(repo => repo.CreateAsync(It.IsAny<SmartDevice>()))
+                           .ReturnsAsync((SmartDevice device) => device);
+
+            // Act
+            var result = await _devicesService.AddDeviceAsync(dto);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(dto.RoomId, result.RoomId);
         }
     }
 }
