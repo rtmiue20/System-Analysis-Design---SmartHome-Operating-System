@@ -7,13 +7,4 @@
         public string TargetStatus { get; set; } = string.Empty;
     }
 
-    // DTO chính để nhận request tạo Scene
-    public class SceneCreateDTO
-    {
-        public string Name { get; set; } = string.Empty;
-        public int UserId { get; set; }
-
-        // Tên biến này phải khớp với chữ "sceneActions" trên Postman của bạn
-        public List<SceneActionCreateDTO> SceneActions { get; set; } = new List<SceneActionCreateDTO>();
-    }
 }
