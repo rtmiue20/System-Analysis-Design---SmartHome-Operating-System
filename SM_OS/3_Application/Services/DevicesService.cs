@@ -14,13 +14,20 @@ namespace SM_OS.Services
     public class DevicesService : IDevicesService
     {
         private readonly IDevicesRepository _deviceRepo;
-        private readonly IRoomRepository _roomRepo; // Cần check xem phòng có tồn tại không
-        private readonly ILogger<DevicesService> _logger; // Ghi log
-        public DevicesService(IDevicesRepository deviceRepo, IRoomRepository roomRepo, ILogger<DevicesService> logger)
+        private readonly IRoomRepository _roomRepo;
+        private readonly ILogger<DevicesService> _logger;
+        private readonly IHubContext<SmartHomeHub> _hubContext;
+
+        public DevicesService(
+        IDevicesRepository deviceRepo,
+        IRoomRepository roomRepo,
+        ILogger<DevicesService> logger,
+        IHubContext<SmartHomeHub> hubContext) // Bỏ ISmartHomeClient ở đây luôn
         {
             _deviceRepo = deviceRepo;
             _roomRepo = roomRepo;
             _logger = logger;
+            _hubContext = hubContext;
         }
 
         public async Task<IEnumerable<SmartDevice>> GetAllDevicesAsync() => await _deviceRepo.GetAllAsync();
@@ -40,22 +47,38 @@ namespace SM_OS.Services
         public async Task<bool> UpdateStatusAsync(int id, string status, string userName)
         {
             var device = await _deviceRepo.GetByIdAsync(id);
-            if (device == null)
-            {
-                // Ghi log cảnh báo khi không tìm thấy thiết bị
-                _logger.LogWarning("No device ID {Id} found to update", id);
-                return false;
-            }
+            if (device == null) return false;
+
             device.Status = status;
             var result = await _deviceRepo.UpdateAsync(device);
 
             if (result)
             {
-                // ĐÂY CHÍNH LÀ LƯU VẾT: Ai? (userName), Làm gì? (status), Lúc nào? (Serilog tự ghi)
-                _logger.LogInformation("User {User} has changed the device status {Id} to {Status}",userName, id, status);
-            }
+                _logger.LogInformation("User {User} changed device {Id} to {Status}", userName, id, status);
 
+                // Tự động bắn SignalR cho mọi hành động thay đổi trạng thái (Kể cả từ Scene)
+                bool isDeviceOn = status.Equals("On", StringComparison.OrdinalIgnoreCase) ||
+                                  status.Equals("True", StringComparison.OrdinalIgnoreCase);
+                await _hubContext.Clients.All.SendAsync("ReceiveDeviceUpdate", id, isDeviceOn);
+            }
             return result;
+        }
+
+        public async Task<bool> UpdateDeviceAsync(int id, DeviceCreateDTO dto)
+        {
+            var device = await _deviceRepo.GetByIdAsync(id);
+            if (device == null) return false;
+
+            var roomExists = await _roomRepo.GetByIdAsync(dto.RoomId);
+            if (roomExists == null) return false;
+
+            device.Name = dto.Name;
+
+            device.Type = dto.Type;
+
+            device.RoomId = dto.RoomId;
+
+            return await _deviceRepo.UpdateAsync(device);
         }
 
         public async Task<bool> DeleteDeviceAsync(int id) => await _deviceRepo.DeleteAsync(id);

@@ -38,6 +38,7 @@ builder.Services.AddScoped<IDevicesService, DevicesService>();
 builder.Services.AddScoped<IUsersService, UsersService>();
 builder.Services.AddScoped<ISceneService, SceneService>();
 
+
 // 3. Đăng ký các dịch vụ hệ thống
 builder.Services.AddControllers();
 // Thêm cấu hình để tránh lỗi vòng lặp JSON khi include Entities

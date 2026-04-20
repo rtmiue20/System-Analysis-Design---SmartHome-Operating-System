@@ -25,6 +25,12 @@ namespace SM_OS.Repositories
                 return null;
             }
         }
+        // BỔ SUNG: Cập nhật tên ngữ cảnh
+        public async Task<bool> DeleteSceneAsync(Scene scene)
+        {
+            _context.Scenes.Remove(scene);
+            return await _context.SaveChangesAsync() > 0;
+        }
 
         public async Task<Scene?> GetSceneByIdAsync(int id) =>
             await _context.Scenes
@@ -39,4 +45,5 @@ namespace SM_OS.Repositories
                 .AsNoTracking() // Tối ưu hóa hiệu năng cực tốt khi GET danh sách
                 .ToListAsync();
     }
+
 }

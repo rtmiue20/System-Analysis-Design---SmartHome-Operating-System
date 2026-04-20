@@ -15,6 +15,7 @@ namespace SM_OS.Data
         public DbSet<Scene> Scenes { get; set; }
         public DbSet<SceneAction> SceneActions { get; set; }
 
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -26,7 +27,7 @@ namespace SM_OS.Data
                 .HasForeignKey(d => d.RoomId)
                 .OnDelete(DeleteBehavior.Cascade); // Xóa phòng thì xóa luôn thiết bị
 
-            // Cấu hình khóa chính cho Room (nếu bạn đặt tên là RoomId thay vì Id)
+            // Cấu hình khóa chính cho Room
             modelBuilder.Entity<Room>().HasKey(r => r.RoomId);
 
             // Cấu hình khóa chính cho SmartDevice
