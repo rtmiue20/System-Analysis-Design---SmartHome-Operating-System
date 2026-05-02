@@ -1,45 +1,13 @@
-﻿import React, { useState } from 'react';
+﻿import React from 'react';
 
-const DeviceCard = ({ deviceName, deviceType }) => {
-    // State lưu trạng thái Bật/Tắt của thiết bị (mặc định là tắt)
-    const [isOn, setIsOn] = useState(false);
-
-    // Hàm xử lý khi người dùng bấm nút
-    const toggleDevice = () => {
-        setIsOn(!isOn);
-        // Sau này chỗ này sẽ là nơi gọi API sang Backend
-        console.log(`Đã gửi lệnh: ${!isOn ? 'BẬT' : 'TẮT'} ${deviceName}`);
-    };
-
+const DeviceCard = ({ device, onToggle }) => {
     return (
-        <div style={{
-            border: '1px solid #ccc',
-            borderRadius: '8px',
-            padding: '16px',
-            width: '200px',
-            margin: '10px',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-        }}>
-            <h3>{deviceName}</h3>
-            <p>Loại: {deviceType}</p>
-            <p>Trạng thái:
-                <strong style={{ color: isOn ? 'green' : 'red', marginLeft: '5px' }}>
-                    {isOn ? 'ĐANG BẬT' : 'ĐANG TẮT'}
-                </strong>
-            </p>
-            <button
-                onClick={toggleDevice}
-                style={{
-                    backgroundColor: isOn ? '#f44336' : '#4CAF50',
-                    color: 'white',
-                    padding: '8px 16px',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    width: '100%'
-                }}
-            >
-                {isOn ? 'Tắt thiết bị' : 'Bật thiết bị'}
+        <div style={{ border: '1px solid #ccc', padding: '10px', margin: '10px', borderRadius: '8px' }}>
+            <h3>{device.name}</h3>
+            <p>Loại: {device.type}</p>
+            <p>Trạng thái: <strong>{device.status}</strong></p>
+            <button onClick={() => onToggle(device.deviceId, device.status === 'On' ? 'Off' : 'On')}>
+                {device.status === 'On' ? 'Tắt' : 'Bật'}
             </button>
         </div>
     );
