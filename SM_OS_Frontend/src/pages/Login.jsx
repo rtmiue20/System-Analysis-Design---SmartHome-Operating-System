@@ -48,18 +48,17 @@ const Login = () => {
 
             if (response.ok) {
                 const data = await response.json();
-                // Nếu backend trả về token, bạn có thể lưu lại ở đây:
-                // localStorage.setItem('token', data.token);
+                localStorage.setItem('token', data.token);
 
                 showNotification('success', 'Đăng nhập thành công! Đang chuyển hướng...');
-                setTimeout(() => navigate('/home'), 1500);
+                setTimeout(() => navigate('/dashboard'), 1500);
             } else {
                 // Xử lý khi HTTP status là 400, 401, 404...
                 showNotification('error', 'Sai tài khoản hoặc mật khẩu!');
             }
         } catch (error) {
             // Xử lý khi server bị sập hoặc lỗi mạng
-            showNotification('error', 'Không thể kết nối đến máy chủ!');
+            showNotification(error, 'Không thể kết nối đến máy chủ!');
         }
     };
 
