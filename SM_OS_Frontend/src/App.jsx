@@ -1,37 +1,44 @@
 ﻿import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Navbar from './components/Navbar';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Rooms from './pages/Rooms';
-import Scenes from './pages/Scenes';
 
-// Hàm kiểm tra xem đã đăng nhập chưa
+// Import các trang bạn đã có code
+import Login from './pages/Login';
+import Register from './pages/Register';
+//import Dashboard from './pages/Dashboard';
+
+const Rooms = () => <div className="p-10 text-2xl">Giao diện Phòng (Đang phát triển...)</div>;
+const Scenes = () => <div className="p-10 text-2xl">Giao diện Ngữ cảnh (Đang phát triển...)</div>;
+const Navbar = () => <div className="hidden">Navbar</div>; // Tạm ẩn Navbar nếu chưa có component
+
+// Hàm kiểm tra bảo mật (Tạm thời cho qua để test giao diện)
 const PrivateRoute = ({ children }) => {
-    const token = localStorage.getItem('token');
-    return token ? children : <Navigate replace to="/login" />;
+    // Nếu muốn test màn hình Login, hãy đổi true thành !!localStorage.getItem('token')
+    const isAuthenticated = true;
+    return isAuthenticated ? children : <Navigate replace to="/login" />;
 };
 
 function App() {
     return (
         <Router>
             <Routes>
+                {/* Trang Login */}
                 <Route path="/login" element={<Login />} />
+                <Route path="/regist" element={<Register />} />
 
-                {/* Các trang yêu cầu đăng nhập mới xem được */}
+                {/* Các trang chính của hệ thống */}
                 <Route path="/*" element={
                     <PrivateRoute>
-                        <>
+                        <div className="min-h-screen bg-gray-50">
                             <Navbar />
-                            <div style={{ padding: '20px' }}>
-                                <Routes>
-                                    <Route path="/dashboard" element={<Dashboard />} />
-                                    <Route path="/rooms" element={<Rooms />} />
-                                    <Route path="/scenes" element={<Scenes />} />
-                                    <Route path="/" element={<Navigate to="/dashboard" />} />
-                                </Routes>
-                            </div>
-                        </>
+                            <Routes>
+                                <Route path="/dashboard" element={<div className="p-10 text-2xl">Dashboard (Đang sửa...)</div>} />
+                                <Route path="/rooms" element={<Rooms />} />
+                                <Route path="/scenes" element={<Scenes />} />
+                                {/* Mặc định vào Dashboard */}
+                                <Route path="/" element={<Navigate to="/dashboard" />} />
+                                
+                            </Routes>
+                        </div>
                     </PrivateRoute>
                 } />
             </Routes>

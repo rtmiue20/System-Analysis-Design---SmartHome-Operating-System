@@ -38,13 +38,17 @@ namespace SM_OS.Services
             return await _userRepo.CreateAsync(user);
         }
 
-        public async Task<User?> LoginAsync(string username, string password)
+        public async Task<User> LoginAsync(string username, string password)
         {
-            var user = await _userRepo.GetByUsernameAsync(username);
-            // Kiểm tra user tồn tại và mật khẩu khớp (Ở đây đang so sánh chuỗi thô)
-            if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.Password))
-                return null;
-            return user;
+            var user = await _context.Users.SingleOrDefaultAsync(u => u.Username == username);
+
+            if (user == null) return null; // Không tìm thấy user
+
+            bool isPasswordValid = BCrypt.Net.BCrypt.Verify(password, user.Password);
+
+            if (!isPasswordValid) return null; // Sai mật khẩu
+
+            return user; // Đăng nhập thành công
         }
 
         //public string GenerateJwtToken(User user)

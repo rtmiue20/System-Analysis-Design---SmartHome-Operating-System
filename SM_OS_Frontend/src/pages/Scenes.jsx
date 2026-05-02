@@ -8,6 +8,9 @@ const Scenes = () => {
     useEffect(() => {
         if (user.id) {
             axiosClient.get(`/Scenes/user/${user.id}`).then(res => setScenes(res.data));
+
+
+
         }
     }, [user.id]);
 
