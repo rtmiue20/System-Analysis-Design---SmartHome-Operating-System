@@ -1,5 +1,6 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema; // Bắt buộc phải có dòng này
 
 namespace SM_OS.Entities
 {
@@ -10,17 +11,20 @@ namespace SM_OS.Entities
 
         [Required]
         [StringLength(100)]
-        public string Name { get; set; } = string.Empty; //("Đèn phòng khách", "Điều hòa phòng ngủ", ...)
+        public string Name { get; set; } = string.Empty;
 
         [StringLength(50)]
-        public string Type { get; set; } = string.Empty; //("Light", "Thermostat", "Camera", "Lock", ...)
+        public string Type { get; set; } = string.Empty;
 
         [StringLength(20)]
-        public string Status { get; set; } = "Off"; //("On", "Off", "Locked", "Unlocked", "Recording", ...)
+        public string Status { get; set; } = "Off";
 
-        // BỔ SUNG 
-        public DateTime? LastSeen { get; set; } // Lưu thời gian online cuối cùng
-        public string? AdditionalData { get; set; } // Chứa chuỗi JSON: {"temp": 24, "mode": "Cool"}
+        // BỔ SUNG: Chặn luôn cả 2 thằng này không cho EF quét dưới Database
+        [NotMapped]
+        public DateTime? LastSeen { get; set; }
+
+        [NotMapped]
+        public string? AdditionalData { get; set; }
 
         [Required]
         public int RoomId { get; set; }

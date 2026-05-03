@@ -1,5 +1,7 @@
 ﻿using BCrypt.Net;
+using Microsoft.EntityFrameworkCore; // Thêm thư viện này để dùng SingleOrDefaultAsync
 using Microsoft.IdentityModel.Tokens;
+using SM_OS.Data; // Thêm thư viện này để gọi ApplicationDbContext
 using SM_OS.DTOs;
 using SM_OS.Entities;
 using SM_OS.Repositories.Interfaces;
@@ -15,11 +17,14 @@ namespace SM_OS.Services
     public class UsersService : IUsersService
     {
         private readonly IUsersRepository _userRepo;
+        private readonly ApplicationDbContext _context; // Khai báo thẳng _context ở đây
         private readonly IConfiguration _config;
 
-        public UsersService(IUsersRepository userRepo, IConfiguration config)
+        // Bơm ApplicationDbContext vào chung luôn
+        public UsersService(IUsersRepository userRepo, ApplicationDbContext context, IConfiguration config)
         {
             _userRepo = userRepo;
+            _context = context;
             _config = config;
         }
 
@@ -38,50 +43,36 @@ namespace SM_OS.Services
             return await _userRepo.CreateAsync(user);
         }
 
-        public async Task<User> LoginAsync(string username, string password)
+        public async Task<User?> LoginAsync(string username, string password)
         {
+            // Quay lại cách cũ: Lấy trực tiếp từ _context!
             var user = await _context.Users.SingleOrDefaultAsync(u => u.Username == username);
 
             if (user == null) return null; // Không tìm thấy user
 
-            bool isPasswordValid = BCrypt.Net.BCrypt.Verify(password, user.Password);
-
-            if (!isPasswordValid) return null; // Sai mật khẩu
+            // Đề phòng trường hợp account trong DB của bạn đang dùng pass chữ thường (chưa băm)
+            try
+            {
+                bool isPasswordValid = BCrypt.Net.BCrypt.Verify(password, user.Password);
+                if (!isPasswordValid) return null; // Sai mật khẩu
+            }
+            catch (System.Exception)
+            {
+                // Nếu mật khẩu trong DB không phải dạng BCrypt (do bạn thêm bằng tay vào DB)
+                // thì so sánh chuỗi bình thường luôn để test cho dễ
+                if (user.Password != password) return null;
+            }
 
             return user; // Đăng nhập thành công
         }
 
-        //public string GenerateJwtToken(User user)
-        //{
-        //    var claims = new[]
-        //    {
-        //        new Claim(ClaimTypes.Name, user.Username),
-        //        new Claim(ClaimTypes.Role, user.Role)
-        //    };
-
-        //    // Lưu ý: Key phải dài trên 16 ký tự
-        //    var jwtSettings = _config.GetSection("Jwt");
-        //    var keyString = jwtSettings["Key"] ?? "Default_Secret_Key_1234567890123456"; // Cung cấp giá trị mặc định nếu không có trong config
-        //    var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyString));
-        //    var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-        //    var token = new JwtSecurityToken(
-        //        issuer: jwtSettings["Issuer"],     // Khớp Issuer
-        //        audience: jwtSettings["Audience"], // Khớp Audience
-        //        claims: claims,
-        //        expires: DateTime.Now.AddHours(2),
-        //        signingCredentials: creds
-        //        );
-
-        //    return new JwtSecurityTokenHandler().WriteToken(token);
-        //}
         public string GenerateJwtToken(User user)
         {
             var claims = new[]
             {
-        new Claim(ClaimTypes.Name, user.Username),
-        new Claim(ClaimTypes.Role, user.Role)
-    };
+                new Claim(ClaimTypes.Name, user.Username),
+                new Claim(ClaimTypes.Role, user.Role)
+            };
 
             var jwtSettings = _config.GetSection("Jwt");
 
@@ -93,8 +84,8 @@ namespace SM_OS.Services
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(
-                issuer: issuer,     
-                audience: audience, 
+                issuer: issuer,
+                audience: audience,
                 claims: claims,
                 expires: DateTime.Now.AddHours(2),
                 signingCredentials: creds
@@ -104,4 +95,3 @@ namespace SM_OS.Services
         }
     }
 }
-

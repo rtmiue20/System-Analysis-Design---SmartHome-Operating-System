@@ -16,16 +16,36 @@ namespace SM_OS.Data
         public DbSet<SceneAction> SceneActions { get; set; }
 
 
+        //protected override void OnModelCreating(ModelBuilder modelBuilder)
+        //{
+        //    base.OnModelCreating(modelBuilder);
+
+        //    // Cấu hình quan hệ 1-N giữa Room và SmartDevice
+        //    modelBuilder.Entity<SmartDevice>()
+        //        .HasOne(d => d.Room)
+        //        .WithMany(r => r.SmartDevices)
+        //        .HasForeignKey(d => d.RoomId)
+        //        .OnDelete(DeleteBehavior.Cascade); // Xóa phòng thì xóa luôn thiết bị
+
+        //    // Cấu hình khóa chính cho Room
+        //    modelBuilder.Entity<Room>().HasKey(r => r.RoomId);
+
+        //    // Cấu hình khóa chính cho SmartDevice
+        //    modelBuilder.Entity<SmartDevice>().HasKey(d => d.DeviceId);
+        //}
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            // Bỏ qua cột AdditionalData, không map xuống Database
+            modelBuilder.Entity<SmartDevice>().Ignore(d => d.AdditionalData);
 
             // Cấu hình quan hệ 1-N giữa Room và SmartDevice
             modelBuilder.Entity<SmartDevice>()
                 .HasOne(d => d.Room)
                 .WithMany(r => r.SmartDevices)
                 .HasForeignKey(d => d.RoomId)
-                .OnDelete(DeleteBehavior.Cascade); // Xóa phòng thì xóa luôn thiết bị
+                .OnDelete(DeleteBehavior.Cascade);
 
             // Cấu hình khóa chính cho Room
             modelBuilder.Entity<Room>().HasKey(r => r.RoomId);

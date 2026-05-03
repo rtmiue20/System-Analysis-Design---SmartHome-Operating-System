@@ -11,7 +11,7 @@ namespace SM_OS.Repositories
         public RoomRepository(ApplicationDbContext context) => _context = context; // Dependency Injection để nhận ApplicationDbContext từ bên ngoài
 
         public async Task<IEnumerable<Room>> GetAllAsync() =>
-            await _context.Rooms.Include(r => r.SmartDevices).ToListAsync(); // Lấy tất cả phòng và bao gồm thiết bị thông minh liên quan
+           await _context.Rooms.Include(r => r.SmartDevices).ToListAsync(); // Lấy tất cả phòng và bao gồm thiết bị thông minh liên quan
 
         public async Task<Room?> GetByIdAsync(int id) =>
             await _context.Rooms.Include(r => r.SmartDevices).FirstOrDefaultAsync(r => r.RoomId == id); // Lấy phòng theo ID và bao gồm thiết bị thông minh liên quan
