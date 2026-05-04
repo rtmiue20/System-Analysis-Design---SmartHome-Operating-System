@@ -14,6 +14,9 @@ namespace SM_OS.Data
         public DbSet<User> Users { get; set; }
         public DbSet<Scene> Scenes { get; set; }
         public DbSet<SceneAction> SceneActions { get; set; }
+        public DbSet<DeviceSchedule> DeviceSchedules { get; set; }
+        public DbSet<AutomationRule> AutomationRules { get; set; }
+        public DbSet<SensorTelemetry> SensorTelemetries { get; set; }
 
 
         //protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -52,6 +55,19 @@ namespace SM_OS.Data
 
             // Cấu hình khóa chính cho SmartDevice
             modelBuilder.Entity<SmartDevice>().HasKey(d => d.DeviceId);
+
+            // Cấu hình cho AutomationRule để tránh lỗi "Multiple Cascade Paths"
+            modelBuilder.Entity<AutomationRule>()
+                .HasOne(a => a.SensorDevice)
+                .WithMany()
+                .HasForeignKey(a => a.SensorDeviceId)
+                .OnDelete(DeleteBehavior.Restrict); // Tắt tự động xóa dây chuyền cho Sensor
+
+            modelBuilder.Entity<AutomationRule>()
+                .HasOne(a => a.ActionDevice)
+                .WithMany()
+                .HasForeignKey(a => a.ActionDeviceId)
+                .OnDelete(DeleteBehavior.Cascade);  // Vẫn cho phép xóa dây chuyền cho Action Device
         }
     }
 }
