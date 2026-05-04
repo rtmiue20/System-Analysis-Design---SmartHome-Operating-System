@@ -12,9 +12,7 @@ namespace SM_OS.Controllers
         private readonly IRoomService _roomService;
         public RoomsController(IRoomService roomService) => _roomService = roomService;
 
-        [HttpGet]
-        public async Task<IActionResult> GetAll() => Ok(await _roomService.GetAllRoomsAsync());
-
+        // 1. POST
         [HttpPost]
         public async Task<IActionResult> Create(RoomCreateDTO dto)
         {
@@ -22,6 +20,11 @@ namespace SM_OS.Controllers
             return CreatedAtAction(nameof(GetAll), new { id = room.RoomId }, room.ToResponseDto());
         }
 
+        // 2. GET
+        [HttpGet]
+        public async Task<IActionResult> GetAll() => Ok(await _roomService.GetAllRoomsAsync());
+
+        // 3. PUT
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, RoomCreateDTO dto)
         {
@@ -30,20 +33,19 @@ namespace SM_OS.Controllers
             return Ok(new { message = "Room information updated successfully." });
         }
 
+        // 4. DELETE
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            // Logic: Theo AC-1.1, không được xóa phòng nếu còn thiết bị. 
-            // Có thể xử lý logic chặn này ở tầng Service, ở đây Controller chỉ nhận kết quả.
             try
             {
                 var success = await _roomService.DeleteRoomAsync(id);
                 if (!success) return NotFound("No rooms found to delete!");
                 return Ok(new { message = "Room deleted successfully." });
             }
-            catch (InvalidOperationException ex) // CHỈ bắt lỗi nghiệp vụ (phòng có thiết bị)
+            catch (InvalidOperationException ex) 
             {
-                return BadRequest(ex.Message); // Tận dụng luôn câu text ném từ Service
+                return BadRequest(ex.Message);
             }
         }
     }

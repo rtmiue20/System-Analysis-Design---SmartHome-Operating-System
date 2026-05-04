@@ -6,7 +6,10 @@ namespace SM_OS.Repositories.Interfaces
     {
         Task<Scene?> CreateSceneAsync(Scene scene);
         Task<Scene?> GetSceneByIdAsync(int id);
+        Task<IEnumerable<Scene>> GetAllScenesAsync();
         Task<IEnumerable<Scene>> GetScenesByUserIdAsync(int userId);
+        Task<bool> UpdateSceneAsync(Scene scene);
         Task<bool> DeleteSceneAsync(Scene scene);
+        
     }
 }

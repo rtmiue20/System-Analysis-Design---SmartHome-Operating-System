@@ -18,9 +18,7 @@ namespace SM_OS.Controllers
             _deviceService = deviceService;
         }
 
-        [HttpGet]
-        public async Task<IActionResult> GetAll() => Ok(await _deviceService.GetAllDevicesAsync());
-
+        // 1. POST
         [HttpPost]
         public async Task<IActionResult> Create(DeviceCreateDTO dto)
         {
@@ -29,7 +27,11 @@ namespace SM_OS.Controllers
             return Ok(device.ToResponseDto());
         }
 
-        // Cập nhật trạng thái (Bật/Tắt) - Chỉ gọi Service xử lý
+        // 2. GET
+        [HttpGet]
+        public async Task<IActionResult> GetAll() => Ok(await _deviceService.GetAllDevicesAsync());
+
+        // 3. PATCH
         [HttpPatch("{id}/status")]
         public async Task<IActionResult> UpdateStatus(int id, [FromBody] string status)
         {
@@ -40,7 +42,7 @@ namespace SM_OS.Controllers
             return NotFound("Không tìm thấy thiết bị");
         }
 
-        // BỔ SUNG: Cập nhật thông tin thiết bị (Tên, Loại, Phòng)
+        // 4. PUT
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] DeviceCreateDTO dto)
         {
@@ -49,6 +51,7 @@ namespace SM_OS.Controllers
             return Ok(new { message = "Cập nhật thông tin thiết bị thành công" });
         }
 
+        // 5. DELETE
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {

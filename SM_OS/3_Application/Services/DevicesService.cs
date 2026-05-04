@@ -22,7 +22,7 @@ namespace SM_OS.Services
         IDevicesRepository deviceRepo,
         IRoomRepository roomRepo,
         ILogger<DevicesService> logger,
-        IHubContext<SmartHomeHub> hubContext) // Bỏ ISmartHomeClient ở đây luôn
+        IHubContext<SmartHomeHub> hubContext)
         {
             _deviceRepo = deviceRepo;
             _roomRepo = roomRepo;
@@ -30,20 +30,22 @@ namespace SM_OS.Services
             _hubContext = hubContext;
         }
 
-        public async Task<IEnumerable<SmartDevice>> GetAllDevicesAsync() => await _deviceRepo.GetAllAsync();
-
-        public async Task<SmartDevice?> GetDeviceByIdAsync(int id) => await _deviceRepo.GetByIdAsync(id);
-
+        // 1. C - Create
         public async Task<SmartDevice?> AddDeviceAsync(DeviceCreateDTO dto)
         {
             var room = await _roomRepo.GetByIdAsync(dto.RoomId);
             if (room == null) return null;
 
-            // Sử dụng Mapper
             var device = dto.ToEntity();
             return await _deviceRepo.CreateAsync(device);
         }
 
+        // 2. R - Read
+        public async Task<IEnumerable<SmartDevice>> GetAllDevicesAsync() => await _deviceRepo.GetAllAsync();
+
+        public async Task<SmartDevice?> GetDeviceByIdAsync(int id) => await _deviceRepo.GetByIdAsync(id);
+
+        // 3. U - Update
         public async Task<bool> UpdateStatusAsync(int id, string status, string userName)
         {
             var device = await _deviceRepo.GetByIdAsync(id);
@@ -56,7 +58,6 @@ namespace SM_OS.Services
             {
                 _logger.LogInformation("User {User} changed device {Id} to {Status}", userName, id, status);
 
-                // Tự động bắn SignalR cho mọi hành động thay đổi trạng thái (Kể cả từ Scene)
                 bool isDeviceOn = status.Equals("On", StringComparison.OrdinalIgnoreCase) ||
                                   status.Equals("True", StringComparison.OrdinalIgnoreCase);
                 await _hubContext.Clients.All.SendAsync("ReceiveDeviceUpdate", id, isDeviceOn);
@@ -81,6 +82,7 @@ namespace SM_OS.Services
             return await _deviceRepo.UpdateAsync(device);
         }
 
+        // 4. D - Delete
         public async Task<bool> DeleteDeviceAsync(int id) => await _deviceRepo.DeleteAsync(id);
     }
 }

@@ -9,5 +9,6 @@ namespace SM_OS.Services.Interfaces
         Task<IEnumerable<Scene>> GetUserScenesAsync(int userId);
         Task<bool> ExecuteSceneAsync(int sceneId, string userName); // Hàm thực thi ngữ cảnh
         Task<bool> DeleteSceneAsync(int id);
+        Task<IEnumerable<Scene>> GetAllScenesAsync();
     }
 }

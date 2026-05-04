@@ -18,13 +18,13 @@ namespace SM_OS.Services
             _deviceRepo = deviceRepo;
         }
 
+        // 1. C - Create
         public async Task<Scene?> AddSceneAsync(SceneCreateDTO dto)
         {
-            // VALIDATE: Kiểm tra tất cả thiết bị trong danh sách hành động có tồn tại không
             foreach (var action in dto.Actions)
             {
                 var dev = await _deviceRepo.GetByIdAsync(action.SmartDeviceId);
-                if (dev == null) return null; // Trả về null nếu có thiết bị không tồn tại
+                if (dev == null) return null; 
             }
 
             var scene = new Scene
@@ -40,39 +40,47 @@ namespace SM_OS.Services
             return await _sceneRepo.CreateSceneAsync(scene);
         }
 
-        public async Task<IEnumerable<Scene>> GetUserScenesAsync(int userId) =>
-            await _sceneRepo.GetScenesByUserIdAsync(userId);
+        // 2. R - Read
+        public async Task<IEnumerable<Scene>> GetAllScenesAsync() => await _sceneRepo.GetAllScenesAsync();
 
-        //public async Task<bool> ExecuteSceneAsync(int sceneId, string userName)
-        //{
-        //    var scene = await _sceneRepo.GetSceneByIdAsync(sceneId);
-        //    if (scene == null) return false;
+        public async Task<IEnumerable<Scene>> GetUserScenesAsync(int userId) => await _sceneRepo.GetScenesByUserIdAsync(userId);
 
-        //    // Duyệt qua từng hành động trong ngữ cảnh và yêu cầu DeviceService cập nhật
-        //    foreach (var action in scene.SceneActions)
-        //    {
-        //        // Hành động này sẽ tự động ghi log và bắn SignalR sang Frontend (đã cấu hình ở Phase 1)
-        //        await _deviceService.UpdateStatusAsync(action.SmartDeviceId, action.TargetStatus, userName);
-        //    }
+        public async Task<Scene?> GetSceneByIdAsync(int id) => await _sceneRepo.GetSceneByIdAsync(id);
 
-        //    return true;
-        //}
+        // 3. U - Update
+        public async Task<bool> UpdateSceneAsync(int id, SceneCreateDTO dto)
+        {
+            var existingScene = await _sceneRepo.GetSceneByIdAsync(id);
+            if (existingScene == null) return false;
 
+            existingScene.Name = dto.Name;
+
+            existingScene.SceneActions = dto.Actions.Select(a => new SceneAction
+            {
+                SmartDeviceId = a.SmartDeviceId,
+                TargetStatus = a.TargetStatus
+            }).ToList();
+
+            return await _sceneRepo.UpdateSceneAsync(existingScene);
+        }
+
+        // 4. D - Delete    
         public async Task<bool> DeleteSceneAsync(int id)
         {
             var scene = await _sceneRepo.GetSceneByIdAsync(id);
             if (scene == null) return false;
-            return await _sceneRepo.DeleteSceneAsync(scene); // Giả định Repo đã có hàm Delete
+            return await _sceneRepo.DeleteSceneAsync(scene); 
         }
 
-        public async Task<bool> ExecuteSceneAsync(int sceneId, string userName)
+
+        // Hàm thực thi ngữ cảnh: Dựa vào SceneId, lấy ra danh sách hành động và gọi DeviceService để cập nhật trạng thái thiết bị
+        public async Task<bool> ExecuteSceneAsync(int sceneId, string userName) 
         {
             var scene = await _sceneRepo.GetSceneByIdAsync(sceneId);
             if (scene == null) return false;
 
             foreach (var action in scene.SceneActions)
             {
-                // Cập nhật trạng thái thiết bị theo hành động trong ngữ cảnh
                 await _deviceService.UpdateStatusAsync(action.SmartDeviceId, action.TargetStatus, userName);
             }
             return true;

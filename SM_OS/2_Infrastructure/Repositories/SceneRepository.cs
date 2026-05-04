@@ -10,6 +10,7 @@ namespace SM_OS.Repositories
         private readonly ApplicationDbContext _context;
         public SceneRepository(ApplicationDbContext context) => _context = context;
 
+        // 1. C - Create
         public async Task<Scene?> CreateSceneAsync(Scene scene)
         {
             try
@@ -20,30 +21,44 @@ namespace SM_OS.Repositories
             }
             catch (DbUpdateException)
             {
-                // Bắt lỗi vi phạm khóa ngoại (UserId hoặc SmartDeviceId không tồn tại)
-                // Trả về null để tầng Service/Controller biết đường báo lỗi 400 BadRequest
                 return null;
             }
         }
-        // BỔ SUNG: Cập nhật tên ngữ cảnh
+
+        // 2. R - Read
+        public async Task<Scene?> GetSceneByIdAsync(int id) =>
+            await _context.Scenes
+                .Include(s => s.SceneActions)
+                .AsNoTracking() 
+                .FirstOrDefaultAsync(s => s.Id == id);
+
+        public async Task<IEnumerable<Scene>> GetAllScenesAsync() =>
+            await _context.Scenes
+                .Include(s => s.SceneActions)
+                .AsNoTracking()
+                .ToListAsync();
+
+        public async Task<IEnumerable<Scene>> GetScenesByUserIdAsync(int userId) =>
+            await _context.Scenes
+                .Include(s => s.SceneActions)
+                .Where(s => s.UserId == userId)
+                .AsNoTracking()
+                .ToListAsync();
+
+        // 3. U - Update
+        public async Task<bool> UpdateSceneAsync(Scene scene)
+        {
+            _context.Scenes.Update(scene);
+            return await _context.SaveChangesAsync() > 0;
+        }
+
+        // 4. D - Delete
         public async Task<bool> DeleteSceneAsync(Scene scene)
         {
             _context.Scenes.Remove(scene);
             return await _context.SaveChangesAsync() > 0;
         }
 
-        public async Task<Scene?> GetSceneByIdAsync(int id) =>
-            await _context.Scenes
-                .Include(s => s.SceneActions)
-                .AsNoTracking() // Tối ưu hóa: Báo cho EF Core không cần theo dõi cục data này
-                .FirstOrDefaultAsync(s => s.Id == id);
-
-        public async Task<IEnumerable<Scene>> GetScenesByUserIdAsync(int userId) =>
-            await _context.Scenes
-                .Include(s => s.SceneActions)
-                .Where(s => s.UserId == userId)
-                .AsNoTracking() // Tối ưu hóa hiệu năng cực tốt khi GET danh sách
-                .ToListAsync();
     }
 
 }

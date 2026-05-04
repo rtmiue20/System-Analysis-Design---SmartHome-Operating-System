@@ -12,11 +12,8 @@ namespace SM_OS.Controllers
     {
         private readonly ISceneService _sceneService;
 
-        public ScenesController(ISceneService sceneService)
-        {
-            _sceneService = sceneService;
-        }
 
+        // 1. POST
         [HttpPost]
         public async Task<IActionResult> Create(SceneCreateDTO dto)
         {
@@ -28,14 +25,6 @@ namespace SM_OS.Controllers
             return Ok(new { message = "Tạo ngữ cảnh thành công!", sceneId = scene.Id });
         }
 
-        [HttpGet("user/{userId}")]
-        public async Task<IActionResult> GetUserScenes(int userId)
-        {
-            var scenes = await _sceneService.GetUserScenesAsync(userId);
-            return Ok(scenes);
-        }
-
-        // Kích hoạt chạy ngữ cảnh
         [HttpPost("{id}/execute")]
         public async Task<IActionResult> Execute(int id)
         {
@@ -47,7 +36,45 @@ namespace SM_OS.Controllers
             return Ok(new { message = $"Ngữ cảnh ID {id} đã được kích hoạt thành công." });
         }
 
-        // BỔ SUNG: Xóa ngữ cảnh
+        // 2. GET
+        [HttpGet("user/{userId}")]
+        public async Task<IActionResult> GetUserScenes(int userId)
+        {
+            var scenes = await _sceneService.GetUserScenesAsync(userId);
+            return Ok(scenes);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAllScenes()
+        {
+            var scenes = await _sceneService.GetAllScenesAsync();
+            return Ok(scenes);
+        }
+
+        public ScenesController(ISceneService sceneService)
+        {
+            _sceneService = sceneService;
+        }
+
+        //3. PUT
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Update(int id, SceneCreateDTO dto)
+        {
+            // Gọi service để xử lý logic cập nhật
+            var success = await _sceneService.UpdateSceneAsync(id, dto);
+
+            if (!success)
+            {
+                return NotFound(new
+                {
+                    message = "Cập nhật thất bại! Không tìm thấy ngữ cảnh hoặc dữ liệu không hợp lệ."
+                });
+            }
+
+            return Ok(new { message = "Cập nhật ngữ cảnh thành công!" });
+        }
+
+        // 4. DELETE
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {

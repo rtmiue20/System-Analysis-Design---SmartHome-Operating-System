@@ -12,6 +12,7 @@ namespace SM_OS.Controllers
         private readonly IUsersService _userService;
         public UsersController(IUsersService userService) => _userService = userService;
 
+        // 1. POST
         [HttpPost("register")]
         public async Task<IActionResult> Register(UserRegisterDTO dto)
         {
@@ -33,6 +34,8 @@ namespace SM_OS.Controllers
                 user = user.ToResponseDto()
             });
         }
+
+
     }
 
     public class LoginRequest

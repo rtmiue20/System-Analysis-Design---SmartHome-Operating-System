@@ -1,7 +1,6 @@
 ﻿using BCrypt.Net;
-using Microsoft.EntityFrameworkCore; // Thêm thư viện này để dùng SingleOrDefaultAsync
-using Microsoft.IdentityModel.Tokens;
-using SM_OS.Data; // Thêm thư viện này để gọi ApplicationDbContext
+using Microsoft.EntityFrameworkCore; 
+using SM_OS.Data; 
 using SM_OS.DTOs;
 using SM_OS.Entities;
 using SM_OS.Repositories.Interfaces;
@@ -17,10 +16,9 @@ namespace SM_OS.Services
     public class UsersService : IUsersService
     {
         private readonly IUsersRepository _userRepo;
-        private readonly ApplicationDbContext _context; // Khai báo thẳng _context ở đây
+        private readonly ApplicationDbContext _context;
         private readonly IConfiguration _config;
 
-        // Bơm ApplicationDbContext vào chung luôn
         public UsersService(IUsersRepository userRepo, ApplicationDbContext context, IConfiguration config)
         {
             _userRepo = userRepo;
@@ -28,6 +26,7 @@ namespace SM_OS.Services
             _config = config;
         }
 
+        // 1. Register
         public async Task<User?> RegisterAsync(UserRegisterDTO dto)
         {
             if (await _userRepo.UserExistsAsync(dto.Username)) return null;
@@ -38,34 +37,32 @@ namespace SM_OS.Services
                 Password = BCrypt.Net.BCrypt.HashPassword(dto.Password),
                 FullName = dto.FullName,
                 Email = dto.Email,
-                Role = "HomeOwner" // Mặc định role khi đăng ký
+                Role = "HomeOwner"
             };
             return await _userRepo.CreateAsync(user);
         }
 
+        // 2. Login
         public async Task<User?> LoginAsync(string username, string password)
         {
-            // Quay lại cách cũ: Lấy trực tiếp từ _context!
             var user = await _context.Users.SingleOrDefaultAsync(u => u.Username == username);
 
-            if (user == null) return null; // Không tìm thấy user
-
-            // Đề phòng trường hợp account trong DB của bạn đang dùng pass chữ thường (chưa băm)
+            if (user == null) return null;
+           
             try
             {
                 bool isPasswordValid = BCrypt.Net.BCrypt.Verify(password, user.Password);
-                if (!isPasswordValid) return null; // Sai mật khẩu
+                if (!isPasswordValid) return null; 
             }
             catch (System.Exception)
-            {
-                // Nếu mật khẩu trong DB không phải dạng BCrypt (do bạn thêm bằng tay vào DB)
-                // thì so sánh chuỗi bình thường luôn để test cho dễ
+            {           
                 if (user.Password != password) return null;
             }
 
-            return user; // Đăng nhập thành công
+            return user; 
         }
 
+        // 3. Generate JWT Token
         public string GenerateJwtToken(User user)
         {
             var claims = new[]
