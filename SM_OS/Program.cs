@@ -9,13 +9,14 @@ using System.Text;
 using Serilog;
 using SM_OS.Hubs;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // --- CẤU HÌNH SERILOG TẠI ĐÂY ---
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console() // Ghi log ra màn hình đen (Console)
-    .WriteTo.File("Logs/smarthome_log.txt", rollingInterval: RollingInterval.Day) // Ghi vào file theo ngày
+    .WriteTo.File("Logs/smarthome_log.txt", rollingInterval: RollingInterval.Day)
     .CreateLogger();
 
 builder.Host.UseSerilog();
@@ -31,40 +32,26 @@ builder.Services.AddScoped<IRoomRepository, RoomRepository>();
 builder.Services.AddScoped<IDevicesRepository, DevicesRepository>();
 builder.Services.AddScoped<IUsersRepository, UsersRepository>();
 builder.Services.AddScoped<ISceneRepository, SceneRepository>();
+builder.Services.AddScoped<IAutomationRepository, AutomationRepository>();
+builder.Services.AddScoped<IScheduleRepository, ScheduleRepository>();
 
 // Đăng ký Services
 builder.Services.AddScoped<IRoomService, RoomService>();
 builder.Services.AddScoped<IDevicesService, DevicesService>();
 builder.Services.AddScoped<IUsersService, UsersService>();
 builder.Services.AddScoped<ISceneService, SceneService>();
-
+builder.Services.AddScoped<IAutomationsService, AutomationsService>();
+builder.Services.AddScoped<ISchedulesService, SchedulesService>();
 
 // 3. Đăng ký các dịch vụ hệ thống
-builder.Services.AddControllers();
-// Thêm cấu hình để tránh lỗi vòng lặp JSON khi include Entities
-builder.Services.AddControllers().AddJsonOptions(options =>
-{
-    options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
-});
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+    });
 
+// Cấu hình JWT
 var jwtSettings = builder.Configuration.GetSection("Jwt");
-//var keyString = jwtSettings["Key"] ?? "Default_Secret_Key_1234567890123456";
-//var key = Encoding.UTF8.GetBytes(keyString);
-
-//builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-//    .AddJwtBearer(options =>
-//    {
-//        options.TokenValidationParameters = new TokenValidationParameters
-//        {
-//            ValidateIssuer = true,
-//            ValidateAudience = true,
-//            ValidateLifetime = true,
-//            ValidateIssuerSigningKey = true,
-//            ValidIssuer = jwtSettings["Issuer"],      // Đọc từ json
-//            ValidAudience = jwtSettings["Audience"],  // Đọc từ json
-//            IssuerSigningKey = new SymmetricSecurityKey(key)
-//        };
-//    });
 var keyString = jwtSettings["Key"] ?? "Default_Secret_Key_1234567890123456";
 var issuer = jwtSettings["Issuer"] ?? "smarthome";
 var audience = jwtSettings["Audience"] ?? "smarthome";
@@ -90,6 +77,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddSignalR();
 
+// Cấu hình CORS cho ReactJS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp",
@@ -111,13 +99,12 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-//app.UseHttpsRedirection();
 app.UseCors("AllowReactApp");
 app.UseMiddleware<SM_OS.Middlewares.ExceptionMiddleware>();
 app.UseAuthentication();
-// Chèn Middleware cho Authorization nếu sau này bạn làm Login/JWT
 app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<SmartHomeHub>("/smarthomehub");
+
 app.Run();

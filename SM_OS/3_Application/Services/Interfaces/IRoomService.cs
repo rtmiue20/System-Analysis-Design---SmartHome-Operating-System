@@ -5,9 +5,9 @@ namespace SM_OS.Services.Interfaces
 {
     public interface IRoomService
     {
+        Task<Room> AddRoomAsync(RoomCreateDTO dto);
         Task<IEnumerable<Room>> GetAllRoomsAsync();
         Task<Room?> GetRoomByIdAsync(int id);
-        Task<Room> AddRoomAsync(RoomCreateDTO dto);
         Task<bool> UpdateRoomAsync(int id, RoomCreateDTO dto);
         Task<bool> DeleteRoomAsync(int id);
     }
