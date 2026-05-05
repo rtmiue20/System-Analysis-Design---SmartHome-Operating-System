@@ -15,7 +15,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // --- CẤU HÌNH SERILOG TẠI ĐÂY ---
 Log.Logger = new LoggerConfiguration()
-    .WriteTo.Console() // Ghi log ra màn hình đen (Console)
+    .WriteTo.Console() 
     .WriteTo.File("Logs/smarthome_log.txt", rollingInterval: RollingInterval.Day)
     .CreateLogger();
 

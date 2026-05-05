@@ -1,0 +1,13 @@
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.btn.primary {
+    background: #ff7f50;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+}
