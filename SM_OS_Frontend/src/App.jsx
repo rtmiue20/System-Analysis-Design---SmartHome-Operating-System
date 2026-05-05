@@ -1,18 +1,19 @@
 ﻿import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
-// Import các trang bạn đã có code
+// Import các trang
 import Login from './pages/Login';
 import Register from './pages/Register';
-import Dashboard from './pages/Dashboard'; 
+import Dashboard from './pages/Dashboard';
+import Rooms from './pages/Rooms'; // Cần chắc chắn bạn đã tạo file này trong thư mục pages
 
-const Rooms = () => <div className="p-10 text-2xl">Giao diện Phòng (Đang phát triển...)</div>;
 const Scenes = () => <div className="p-10 text-2xl">Giao diện Ngữ cảnh (Đang phát triển...)</div>;
-const Navbar = () => <div className="hidden">Navbar</div>; // Tạm ẩn Navbar nếu chưa có component
+const Navbar = () => <div className="hidden">Navbar</div>;
 
-// Hàm kiểm tra bảo mật (Tạm thời cho qua để test giao diện)
+// Hàm kiểm tra bảo mật
 const PrivateRoute = ({ children }) => {
-    // Nếu muốn bắt buộc phải Login mới vào được Dashboard, hãy đổi true thành !!localStorage.getItem('token')
+    // Để thực tế hơn, bạn có thể kiểm tra token:
+    // const isAuthenticated = !!localStorage.getItem('token');
     const isAuthenticated = true;
     return isAuthenticated ? children : <Navigate replace to="/login" />;
 };
@@ -25,18 +26,23 @@ function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/regist" element={<Register />} />
 
-                {/* Các trang chính của hệ thống (yêu cầu PrivateRoute) */}
+                {/* Các trang chính của hệ thống */}
                 <Route path="/*" element={
                     <PrivateRoute>
                         <div className="min-h-screen bg-gray-50">
                             <Navbar />
                             <Routes>
-                                {/* Đã gắn Component Dashboard xịn sò vào đây */}
+                                {/* Trang chính */}
                                 <Route path="/dashboard" element={<Dashboard />} />
-                                <Route path="/rooms" element={<Rooms />} />
+
+                                {/* Sửa dòng này: Thêm :roomId để trang Rooms 
+                                   biết đang hiển thị cho phòng nào (ví dụ: /rooms/1)
+                                */}
+                                <Route path="/rooms/:roomId" element={<Rooms />} />
+
                                 <Route path="/scenes" element={<Scenes />} />
 
-                                {/* Mặc định vào Dashboard. Chuyển hướng /home (từ Login) về /dashboard */}
+                                {/* Điều hướng mặc định */}
                                 <Route path="/home" element={<Navigate to="/dashboard" />} />
                                 <Route path="/" element={<Navigate to="/dashboard" />} />
                             </Routes>
