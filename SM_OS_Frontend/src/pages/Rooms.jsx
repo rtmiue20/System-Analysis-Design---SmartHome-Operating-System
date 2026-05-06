@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect, useRef } from 'react';
-import { Clock, Plus, Thermometer, Lightbulb, X, ChevronDown, CheckCircle, AlertCircle } from 'lucide-react';
+import { Clock, Plus, Thermometer, Lightbulb, X, ChevronDown, CheckCircle, AlertCircle, Minus, RotateCcw, Volume2 } from 'lucide-react';
 
 const Rooms = () => {
     const [rooms, setRooms] = useState([]);
@@ -7,6 +7,15 @@ const Rooms = () => {
     const [selectedRoom, setSelectedRoom] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
+    const [showDeviceModal, setShowDeviceModal] = useState(false);
+    const [selectedDevice, setSelectedDevice] = useState(null);
+    const [deviceSettings, setDeviceSettings] = useState({
+        temperature: 24,
+        mode: 'Làm mát',
+        brightness: 100,
+        hasSchedule: false,
+        scheduleTime: '02:00'
+    });
     const [newDevice, setNewDevice] = useState({
         name: '',
         type: 'Light',
@@ -30,13 +39,13 @@ const Rooms = () => {
     const getDeviceName = (device) => device.name || device.Name || 'Thiết bị';
 
     const deviceTypes = ['Light', 'AC', 'TV', 'Thermostat', 'Curtain', 'Speaker', 'Camera', 'Lock'];
+    const modes = ['Làm mát', 'Hút ẩm', 'Quạt'];
 
     // Add toast notification
     const addToast = (message, type = 'success') => {
         const id = Date.now();
         setToasts(prev => [...prev, { id, message, type }]);
         
-        // Auto remove after 3 seconds
         setTimeout(() => {
             setToasts(prev => prev.filter(t => t.id !== id));
         }, 3000);
@@ -110,6 +119,54 @@ const Rooms = () => {
         } catch (error) {
             console.error('Lỗi cập nhật trạng thái:', error);
             addToast('Lỗi khi cập nhật trạng thái thiết bị', 'error');
+        }
+    };
+
+    const handleOpenDeviceModal = (device) => {
+        setSelectedDevice(device);
+        setDeviceSettings({
+            temperature: device.temperature || 24,
+            mode: device.mode || 'Làm mát',
+            brightness: device.brightness || 100,
+            hasSchedule: device.hasSchedule || false,
+            scheduleTime: device.scheduleTime || '02:00'
+        });
+        setShowDeviceModal(true);
+    };
+
+    const handleSaveDeviceSettings = async () => {
+        if (!selectedDevice) return;
+
+        try {
+            const deviceId = getDeviceId(selectedDevice);
+            const updatePayload = {
+                ...selectedDevice,
+                temperature: deviceSettings.temperature,
+                mode: deviceSettings.mode,
+                brightness: deviceSettings.brightness,
+                hasSchedule: deviceSettings.hasSchedule,
+                scheduleTime: deviceSettings.scheduleTime
+            };
+
+            const res = await fetch(`${API_BASE_URL}/Devices/${deviceId}`, {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify(updatePayload)
+            });
+
+            if (res.ok) {
+                setDevices(prev => prev.map(d => {
+                    const dId = getDeviceId(d);
+                    return dId === deviceId ? updatePayload : d;
+                }));
+                addToast('Đã lưu cài đặt thiết bị thành công!', 'success');
+                setShowDeviceModal(false);
+            } else {
+                addToast('Lỗi khi lưu cài đặt', 'error');
+            }
+        } catch (error) {
+            console.error('Lỗi lưu cài đặt:', error);
+            addToast('Lỗi: ' + error.message, 'error');
         }
     };
 
@@ -269,14 +326,18 @@ const Rooms = () => {
                                 return (
                                     <div
                                         key={dId}
-                                        className="bg-white rounded-3xl border-2 border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow"
+                                        onClick={() => handleOpenDeviceModal(device)}
+                                        className="bg-white rounded-3xl border-2 border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
                                     >
                                         <div className="flex justify-between items-start mb-6">
                                             <div>
                                                 {getDeviceIcon(dType, isOn)}
                                             </div>
                                             <button
-                                                onClick={() => handleToggleDevice(dId, dStatus)}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleToggleDevice(dId, dStatus);
+                                                }}
                                                 className={`relative w-14 h-8 rounded-full transition-colors duration-300 ${
                                                     isOn ? 'bg-orange-500' : 'bg-gray-300'
                                                 }`}
@@ -306,8 +367,142 @@ const Rooms = () => {
                             })}
                         </div>
                     )}
-                </div>  
+                </div>
             </div>
+
+            {/* Device Control Modal */}
+            {showDeviceModal && selectedDevice && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-40">
+                    <div className="bg-gradient-to-br from-teal-900 to-teal-800 rounded-3xl p-8 w-full max-w-md text-white">
+                        {/* Header */}
+                        <div className="flex justify-between items-start mb-6">
+                            <div>
+                                <h2 className="text-2xl font-bold">{getDeviceName(selectedDevice)}</h2>
+                                <p className="text-sm text-teal-200 mt-1">● Đang hoạt động</p>
+                            </div>
+                            <button
+                                onClick={() => setShowDeviceModal(false)}
+                                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                            >
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        {/* Temperature Display & Control */}
+                        <div className="flex flex-col items-center mb-8">
+                            <div className="relative w-48 h-48 rounded-full border-4 border-cyan-400 flex items-center justify-center mb-4">
+                                <div className="text-center">
+                                    <div className="text-5xl font-bold">{deviceSettings.temperature}°<span className="text-3xl">C</span></div>
+                                    <p className="text-teal-200 text-sm mt-2">Phòng: 26°C</p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-4 mt-6">
+                                <button
+                                    onClick={() => setDeviceSettings(prev => ({ ...prev, temperature: Math.max(16, prev.temperature - 1) }))
+}
+                                    className="w-12 h-12 rounded-full bg-teal-700 hover:bg-teal-600 flex items-center justify-center transition-colors"
+                                >
+                                    <Minus size={24} />
+                                </button>
+                                <span className="text-teal-200">MỤC TIÊU</span>
+                                <button
+                                    onClick={() => setDeviceSettings(prev => ({ ...prev, temperature: Math.min(30, prev.temperature + 1) }))
+}
+                                    className="w-12 h-12 rounded-full bg-teal-700 hover:bg-teal-600 flex items-center justify-center transition-colors"
+                                >
+                                    <Plus size={24} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Mode Selection */}
+                        <div className="mb-8">
+                            <p className="text-sm font-semibold mb-3">Chế độ</p>
+                            <div className="flex gap-3">
+                                {modes.map(mode => (
+                                    <button
+                                        key={mode}
+                                        onClick={() => setDeviceSettings(prev => ({ ...prev, mode }))
+}
+                                        className={`flex-1 py-3 rounded-xl font-semibold transition-colors ${
+                                            deviceSettings.mode === mode
+                                                ? 'bg-cyan-400 text-teal-900'
+                                                : 'bg-teal-700 hover:bg-teal-600 text-white'
+                                        }`}
+                                    >
+                                        {mode === 'Làm mát' && '❄️'} 
+                                        {mode === 'Hút ẩm' && '💧'} 
+                                        {mode === 'Quạt' && '🌀'} 
+                                        {' '}{mode}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Brightness Slider */}
+                        <div className="mb-8">
+                            <div className="flex justify-between items-center mb-2">
+                                <p className="text-sm font-semibold">Tốc độ quạt</p>
+                                <span className="text-cyan-400 text-sm font-semibold">Trung bình</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="0"
+                                max="100"
+                                value={deviceSettings.brightness}
+                                onChange={(e) => setDeviceSettings(prev => ({ ...prev, brightness: parseInt(e.target.value) }))
+}
+                                className="w-full h-2 bg-teal-700 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                            />
+                            <div className="flex justify-between text-xs text-teal-200 mt-1">
+                                <span>Thấp</span>
+                                <span>Cao</span>
+                            </div>
+                        </div>
+
+                        {/* Schedule Option */}
+                        <div className="bg-teal-700/50 rounded-xl p-4 mb-6 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <Clock size={20} />
+                                <div>
+                                    <p className="font-semibold">Hẹn giờ</p>
+                                    <p className="text-xs text-teal-200">Tắt lúc 2 giờ</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setDeviceSettings(prev => ({ ...prev, hasSchedule: !prev.hasSchedule }))
+}
+                                className={`relative w-12 h-7 rounded-full transition-colors ${
+                                    deviceSettings.hasSchedule ? 'bg-cyan-400' : 'bg-teal-600'
+                                }`}
+                            >
+                                <div
+                                    className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${
+                                        deviceSettings.hasSchedule ? 'translate-x-5' : 'translate-x-0'
+                                    }`}
+                                />
+                            </button>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowDeviceModal(false)}
+                                className="flex-1 px-4 py-3 rounded-xl border border-cyan-400 text-white font-semibold hover:bg-white/10 transition-colors"
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                onClick={handleSaveDeviceSettings}
+                                className="flex-1 px-4 py-3 rounded-xl bg-cyan-400 text-teal-900 font-semibold hover:bg-cyan-300 transition-colors"
+                            >
+                                Lưu cài đặt
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Add Device Modal */}
             {showAddModal && (
