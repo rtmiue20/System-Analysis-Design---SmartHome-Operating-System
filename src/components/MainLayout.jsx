@@ -38,10 +38,11 @@ const MainLayout = ({ children }) => {
                             <button
                                 key={item.id}
                                 onClick={() => navigate(item.path)}
-                                className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-200 ${active
+                                className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-200 ${
+                                    active
                                         ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20'
                                         : 'text-gray-400 hover:bg-gray-800 hover:text-orange-500'
-                                    }`}
+                                }`}
                             >
                                 <Icon size={22} />
                                 <span className="font-semibold">{item.label}</span>
