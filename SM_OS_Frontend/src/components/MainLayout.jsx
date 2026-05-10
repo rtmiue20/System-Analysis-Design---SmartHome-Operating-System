@@ -19,18 +19,21 @@ const MainLayout = ({ children }) => {
 
     return (
         <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
-            <aside className="w-64 bg-gray-900 border-r border-gray-800 flex flex-col fixed h-screen left-0 top-0">
-                <div className="h-20 flex items-center px-6 border-b border-gray-800">
+            {/* SIDEBAR - Cố định bên trái */}
+            <aside className="w-64 bg-gray-900 border-r border-gray-800 flex flex-col fixed h-screen left-0 top-0 z-40">
+                <div className="h-20 flex items-center px-8 border-b border-gray-800">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center text-white">
-                            <Home size={24} />
+                        <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/20">
+                            <Home className="text-white" size={24} />
                         </div>
-                        <span className="text-xl font-black text-white">{t('brand', 'Smarthome')}</span>
+                        <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-400 to-red-500">
+                            SM_OS
+                        </span>
                     </div>
                 </div>
 
-                <div className="flex-1 flex flex-col gap-2 p-4">
-                    {menuItems.map(item => {
+                <div className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+                    {menuItems.map((item) => {
                         const Icon = item.icon;
                         const active = isActive(item.path);
 
@@ -38,7 +41,7 @@ const MainLayout = ({ children }) => {
                             <button
                                 key={item.id}
                                 onClick={() => navigate(item.path)}
-                                className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-200 ${active
+                                className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-200 ${active
                                         ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20'
                                         : 'text-gray-400 hover:bg-gray-800 hover:text-orange-500'
                                     }`}
@@ -58,7 +61,11 @@ const MainLayout = ({ children }) => {
                 </div>
             </aside>
 
-            <main className="flex-1 ml-64 overflow-y-auto">
+            {/* MAIN CONTENT - Tự động chiếm phần không gian còn lại (đã trừ đi Sidebar 64) */}
+            <main className="flex-1 ml-64 min-h-screen">
+                {/* Lưu ý: Không dùng ml-64 ở bất kỳ trang con nào bên trong nữa!
+                  Chỉ cần dùng class "max-w-4xl mx-auto" ở trang con là nội dung sẽ tự canh giữa cực đẹp.
+                */}
                 {children}
             </main>
         </div>
