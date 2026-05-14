@@ -213,7 +213,7 @@ const AddAutomationModal = ({ isOpen, onClose, isDark, onAdd, editingItem = null
         const sensorId = parseInt(sensorDeviceId);
         const actionId = parseInt(actionDeviceId);
 
-        if (!sensorId || !actionId) {
+        if (isNaN(sensorId) || isNaN(actionId) || sensorId <= 0 || actionId <= 0) {
             setErrors({ submit: 'Vui lòng chọn đầy đủ Sensor và Thiết bị thực hiện' });
             return;
         }
@@ -232,10 +232,9 @@ const AddAutomationModal = ({ isOpen, onClose, isDark, onAdd, editingItem = null
 
             console.log("📤 Gửi dữ liệu:", automationData);
 
-            let response;
             if (editingItem?.id) {
                 // For update, include the Id
-                response = await axiosClient.put(`/Automations/${editingItem.id}`, {
+                await axiosClient.put(`/Automations/${editingItem.id}`, { 
                     id: editingItem.id,
                     ...automationData
                 });
@@ -243,8 +242,11 @@ const AddAutomationModal = ({ isOpen, onClose, isDark, onAdd, editingItem = null
                 onAdd({ id: editingItem.id, ...automationData, updated: true });
             } else {
                 // For create, send only the data without sensorDevice and actionDevice
-                response = await axiosClient.post('/Automations', automationData);
-                onAdd(response.data || automationData);
+                const response = await axiosClient.post('/Automations', automationData); 
+                const created = response.data?.id                                       
+                    ? response.data                                                      
+                    : { ...automationData, _needsRefetch: true };                        
+                onAdd(created);            
             }
             handleClose();
         } catch (error) {
@@ -300,8 +302,9 @@ const AddAutomationModal = ({ isOpen, onClose, isDark, onAdd, editingItem = null
                             className={`w-full px-4 py-3 rounded-xl border ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-300'}`}
                         >
                             <option value="">-- Chọn thiết bị cảm biến --</option>
-                            {sensorDevices.map(device => (
-                                <option key={device.id} value={device.id}>
+                            {sensorDevices.map((device, idx) => (
+                                < option key = { device.id ?? device.Id ?? `sensor-${idx}` } value = { device.id ?? device.Id } >
+
                                     {device.name} (ID: {device.id})
                                 </option>
                             ))}
@@ -335,8 +338,8 @@ const AddAutomationModal = ({ isOpen, onClose, isDark, onAdd, editingItem = null
                             className={`w-full px-4 py-3 rounded-xl border ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-300'}`}
                         >
                             <option value="">-- Chọn thiết bị hành động --</option>
-                            {actionDevices.map(device => (
-                                <option key={device.id} value={device.id}>
+                            {actionDevices.map((device, idx) => ( 
+                                <option key={device.id ?? device.Id ?? `action-${idx}`} value={device.id ?? device.Id}>
                                     {device.name} (ID: {device.id})
                                 </option>
                             ))}
@@ -431,7 +434,7 @@ const AddScheduleModal = ({ isOpen, onClose, isDark, onAdd, editingItem = null, 
         try {
             const scheduleData = {
                 smartDeviceId: parseInt(smartDeviceId),
-                scheduledTime: new Date(scheduledTime).toISOString(),
+                scheduledTime: scheduledTime ? new Date(scheduledTime).toISOString() : null,
                 action: action,
                 isActive: isActive
             };
@@ -443,6 +446,7 @@ const AddScheduleModal = ({ isOpen, onClose, isDark, onAdd, editingItem = null, 
                 });
                 onAdd({ ...editingItem, ...scheduleData, updated: true });
             } else {
+
                 const response = await axiosClient.post('/Schedules', scheduleData);
                 onAdd(response.data);
             }
@@ -661,7 +665,12 @@ const Automations = () => {
 
             setAutomations(automationsWithIcons);
             setSchedules(schedulesResponse.data);
-            setDevices(devicesResponse.data);
+           setDevices(devicesResponse.data.map(d => ({
+                ...d,
+                id: d.deviceId ?? d.DeviceId ?? d.id,
+                name: d.name ?? d.Name,
+                type: d.type ?? d.Type,
+            })));
         } catch (err) {
             console.error('Error fetching data:', err);
             const errorMessage = err.response?.data?.message || err.message || 'Lỗi khi tải dữ liệu';
@@ -762,6 +771,9 @@ const Automations = () => {
                 )
             );
             setToast({ message: 'Cập nhật quy tắc thành công', type: 'success' });
+        } else if (newAutomation._needsRefetch) {   
+            fetchAllData();                         
+            setToast({ message: 'Thêm quy tắc thành công', type: 'success' }); 
         } else {
             const automationWithIcon = {
                 ...newAutomation,
