@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect, useRef } from 'react';
-import { Clock, Plus, Thermometer, Lightbulb, X, ChevronDown, CheckCircle, AlertCircle, Minus, MoreVertical, Home, UtensilsCrossed, Bed, Droplets, Car, Briefcase, Gamepad2, Monitor, Music, Shirt, Wind, SquareX } from 'lucide-react';
+import { Clock, Plus, Thermometer, Lightbulb, X, ChevronDown, CheckCircle, AlertCircle, Minus, MoreVertical, Home, UtensilsCrossed, Bed, Droplets, Car, Briefcase, Gamepad2, Monitor, Music, Shirt, Wind, SquareX, Trash2, Edit3 } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 import { getComponentTheme } from '../utils/themeUtils';
 
@@ -15,6 +15,18 @@ const Rooms = () => {
     const [newRoomName, setNewRoomName] = useState('');
     const [newRoomIcon, setNewRoomIcon] = useState('living');
     const [roomMenuOpenId, setRoomMenuOpenId] = useState(null);
+
+    // Edit room modal state
+    const [showEditRoomModal, setShowEditRoomModal] = useState(false);
+    const [editingRoom, setEditingRoom] = useState(null);
+    const [editRoomName, setEditRoomName] = useState('');
+    const [editRoomIcon, setEditRoomIcon] = useState('living');
+
+    // Delete room modal state
+    const [showDeleteRoomModal, setShowDeleteRoomModal] = useState(false);
+    const [roomToDelete, setRoomToDelete] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
     const { isDarkMode } = useTheme();
     const theme = getComponentTheme(isDarkMode);
 
@@ -53,7 +65,7 @@ const Rooms = () => {
     const deviceTypes = ['Light', 'AC', 'TV', 'Thermostat', 'Curtain', 'Speaker', 'Camera', 'Lock'];
     const modes = ['Làm mát', 'Hút ẩm', 'Quạt'];
 
-    // Lucide icon mapping for rooms - determine icon based on room name if not explicitly set
+    // Lucide icon mapping for rooms
     const roomIconMap = {
         living: Home,
         bed: Bed,
@@ -84,7 +96,7 @@ const Rooms = () => {
         if (name.includes('giặt') || name.includes('laundry')) return Shirt;
         if (name.includes('tủ quần áo') || name.includes('wardrobe')) return Shirt;
 
-        return Home; // default
+        return Home;
     };
 
     const addToast = (message, type = 'success') => {
@@ -157,7 +169,6 @@ const Rooms = () => {
 
     const handleOpenDeviceModal = (device) => {
         const dType = getDeviceType(device).toUpperCase();
-        // Only allow AC devices to open the modal
         if (!dType.includes('AC')) {
             addToast('Chỉ thiết bị AC mới có thể mở giao diện này', 'error');
             return;
@@ -282,10 +293,67 @@ const Rooms = () => {
         }
     };
 
-    const handleDeleteRoom = async (roomId) => {
-        if (!window.confirm('Bạn chắc chắn muốn xóa phòng này?')) return;
+    const handleEditRoom = (room) => {
+        setEditingRoom(room);
+        setEditRoomName(getRoomName(room));
+        setEditRoomIcon(room.icon || room.Icon || 'living');
+        setShowEditRoomModal(true);
+        setRoomMenuOpenId(null);
+    };
 
+    const handleUpdateRoom = async () => {
         try {
+            const response = await fetch(`http://localhost:5000/api/Rooms/${editingRoom.roomId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: editingRoom.roomId,
+                    name: editRoomName,
+                    icon: editRoomIcon
+                }),
+            });
+
+            if (response.ok) {
+                // 1. Cập nhật giao diện (UI nhảy số ngay lập tức)
+                setRooms(prevRooms => prevRooms.map(room =>
+                    room.roomId === editingRoom.roomId
+                        ? {
+                            ...room,
+                            name: editRoomName,
+                            roomName: editRoomName,
+                            icon: editRoomIcon
+                        }
+                        : room
+                ));
+
+                // 2. Gọi hàm addToast có sẵn của bạn (Gọn gàng, không cần setTimeout)
+                addToast('Cập nhật phòng thành công!', 'success');
+
+                // 3. Đóng Modal
+                setShowEditRoomModal(false);
+
+            } else {
+                // Thông báo lỗi nếu thất bại
+                addToast('Lỗi khi cập nhật phòng', 'error');
+            }
+        } catch (error) {
+            console.error("Error updating room:", error);
+            addToast('Lỗi kết nối đến server!', 'error');
+        }
+    };
+    const openDeleteRoomModal = (room) => {
+        setRoomToDelete(room);
+        setShowDeleteRoomModal(true);
+        setRoomMenuOpenId(null);
+    };
+
+    const handleDeleteRoom = async () => {
+        if (!roomToDelete) return;
+
+        setIsDeleting(true);
+        try {
+            const roomId = getRoomId(roomToDelete);
+            console.log(`🗑️ Đang gọi API xóa phòng ID: ${roomId}`);
             const res = await fetch(`${API_BASE_URL}/Rooms/${roomId}`, {
                 method: 'DELETE',
                 headers: getAuthHeaders()
@@ -293,17 +361,24 @@ const Rooms = () => {
 
             if (res.ok) {
                 setRooms(prev => prev.filter(r => getRoomId(r) !== roomId));
+
                 if (selectedRoom && getRoomId(selectedRoom) === roomId) {
                     setSelectedRoom(rooms.length > 1 ? rooms[0] : null);
                 }
-                setRoomMenuOpenId(null);
+
+                setShowDeleteRoomModal(false);
+                setRoomToDelete(null);
                 addToast('Đã xóa phòng thành công!', 'success');
             } else {
-                addToast('Lỗi khi xóa phòng', 'error');
+                const errorData = await res.json().catch(() => ({}));
+                console.error('Delete failed:', errorData);
+                addToast(errorData.message || 'Lỗi khi xóa phòng', 'error');
             }
         } catch (error) {
             console.error('Lỗi xóa phòng:', error);
-            addToast('Lỗi: ' + error.message, 'error');
+            addToast('Lỗi kết nối server khi xóa phòng', 'error');
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -342,22 +417,33 @@ const Rooms = () => {
 
     return (
         <div className={`p-10 min-h-screen ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`}>
-            {/* Toast Notifications */}
-            <div className="fixed top-6 right-6 z-50 space-y-3">
+            {/* Toast Notifications (Đã được nâng cấp) */}
+            <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end space-y-3">
                 {toasts.map(toast => (
                     <div
                         key={toast.id}
-                        className={`flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg animate-in fade-in slide-in-from-top-2 ${toast.type === 'success'
-                            ? 'bg-green-500 text-white'
-                            : 'bg-red-500 text-white'
+                        className={`flex items-center gap-3 px-5 py-3 rounded-xl shadow-2xl animate-in fade-in slide-in-from-bottom-4 ${toast.type === 'success'
+                                ? 'bg-green-500 text-white'
+                                : 'bg-red-500 text-white'
                             }`}
                     >
+                        {/* Icon Trạng thái */}
                         {toast.type === 'success' ? (
-                            <CheckCircle size={20} />
+                            <CheckCircle size={24} className="text-white" />
                         ) : (
-                            <AlertCircle size={20} />
+                            <AlertCircle size={24} className="text-white" />
                         )}
-                        <span className="font-semibold">{toast.message}</span>
+
+                        {/* Nội dung thông báo */}
+                        <span className="font-medium text-sm">{toast.message}</span>
+
+                        {/* Nút X để tắt ngay lập tức (Không cần đợi 3s) */}
+                        <button
+                            onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
+                            className="ml-4 hover:bg-white/20 p-1 rounded-full transition-colors"
+                        >
+                            <X size={16} />
+                        </button>
                     </div>
                 ))}
             </div>
@@ -413,14 +499,13 @@ const Rooms = () => {
 
                     <h3 className={`text-sm font-bold ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} mb-3 uppercase tracking-wide`}>CÁC PHÒNG</h3>
                     <div className="space-y-1">
-                        {rooms.map(room => {
+                        {rooms.map((room, index) => {
                             const rId = getRoomId(room);
                             const rName = getRoomName(room);
                             const isSelected = selectedRoom && String(getRoomId(selectedRoom)) === String(rId);
-                            const iconKey = room.icon || room.Icon || 'living';
 
                             return (
-                                <div key={rId} className="relative group">
+                                <div key={rId || index} className="relative group">
                                     <button
                                         onClick={() => {
                                             setSelectedRoom(room);
@@ -435,7 +520,6 @@ const Rooms = () => {
                                                 : 'text-gray-600 hover:bg-gray-100'
                                             }`}
                                     >
-                                        {/* Icon box - use name-based icon detection */}
                                         <span className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${isSelected
                                             ? isDarkMode ? 'bg-orange-500/25 text-orange-400' : 'bg-orange-100 text-orange-500'
                                             : isDarkMode ? 'bg-white/8 text-gray-400' : 'bg-gray-100 text-gray-500'
@@ -448,7 +532,6 @@ const Rooms = () => {
 
                                         <span className="flex-1 text-left truncate">{rName}</span>
 
-                                        {/* 3-dot menu button */}
                                         <span
                                             role="button"
                                             onClick={(e) => {
@@ -462,44 +545,40 @@ const Rooms = () => {
                                         </span>
                                     </button>
 
-                                    {/* Dropdown menu */}
+                                    {/* Dropdown menu - Fixed delete button */}
                                     {roomMenuOpenId === rId && (
                                         <>
-                                            <div className="fixed inset-0 z-10" onClick={() => setRoomMenuOpenId(null)} />
-                                            <div className={`absolute right-0 top-full mt-1 z-20 min-w-[150px] rounded-xl shadow-xl overflow-hidden border ${isDarkMode
-                                                ? 'bg-gray-800 border-white/10'
-                                                : 'bg-white border-gray-200'
-                                                }`}>
+                                            {/* Backdrop - Giảm z-index để không chặn menu */}
+                                            <div
+                                                className="fixed inset-0 z-10"
+                                                onClick={() => setRoomMenuOpenId(null)}
+                                            />
+
+                                            <div className={`absolute right-0 top-full mt-1 z-50 min-w-[170px] rounded-2xl shadow-2xl overflow-hidden border 
+                                                            ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+
+                                                {/* Chỉnh sửa */}
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        setRoomMenuOpenId(null);
-                                                        // TODO: Edit room
+                                                        handleEditRoom(room);
                                                     }}
-                                                    className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium transition-colors ${isDarkMode ? 'text-gray-200 hover:bg-white/8' : 'text-gray-700 hover:bg-gray-50'
-                                                        }`}
+                                                    className={`w-full flex items-center gap-3 px-5 py-3.5 text-sm font-medium transition-colors hover:bg-gray-100 dark:hover:bg-slate-700 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}
                                                 >
-                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4">
-                                                        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-                                                        <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                                    </svg>
-                                                    Chỉnh sửa
+                                                    <Edit3 size={18} /> Chỉnh sửa
                                                 </button>
-                                                <div className={`h-px ${isDarkMode ? 'bg-white/8' : 'bg-gray-100'}`} />
+
+                                                <div className={`h-px ${isDarkMode ? 'bg-slate-700' : 'bg-gray-100'}`} />
+
+                                                {/* Xóa phòng */}
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        handleDeleteRoom(rId);
+                                                        openDeleteRoomModal(room);
                                                     }}
-                                                    className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium transition-colors text-red-500 ${isDarkMode ? 'hover:bg-red-500/10' : 'hover:bg-red-50'
-                                                        }`}
+                                                    className="w-full flex items-center gap-3 px-5 py-3.5 text-sm font-medium text-red-500 hover:bg-red-500/10 transition-colors"
                                                 >
-                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4">
-                                                        <polyline points="3 6 5 6 21 6" />
-                                                        <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
-                                                        <path d="M10 11v6M14 11v6M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
-                                                    </svg>
-                                                    Xóa phòng
+                                                    <Trash2 size={18} /> Xóa phòng
                                                 </button>
                                             </div>
                                         </>
@@ -625,7 +704,7 @@ const Rooms = () => {
                                                 </div>
                                             )}
 
-                                            {/* TV/Other Extra Info - Only show for non-AC/Thermostat devices */}
+                                            {/* TV/Other Extra Info */}
                                             {!showTempControl && !showBrightnessBar && extraInfo && (
                                                 <div className={`text-xs mt-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
                                                     {extraInfo}
@@ -640,7 +719,139 @@ const Rooms = () => {
                 </div>
             </div>
 
-            {/* Device Control Modal - Only for AC */}
+            {/* ========== EDIT ROOM MODAL (New Design) ========== */}
+            {showEditRoomModal && editingRoom && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className={`w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`}>
+                        {/* Header */}
+                        <div className={`flex items-center justify-between px-8 py-6 border-b ${isDarkMode ? 'border-slate-700 bg-slate-800/50' : 'border-gray-100 bg-gray-50'}`}>
+                            <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                Chỉnh sửa phòng
+                            </h2>
+                            <button
+                                onClick={() => setShowEditRoomModal(false)}
+                                className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-slate-700 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}
+                            >
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-8 space-y-8">
+                            {/* Tên phòng */}
+                            <div>
+                                <label className={`block text-sm font-semibold mb-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                    Tên phòng
+                                </label>
+                                <input
+                                    type="text"
+                                    value={editRoomName}
+                                    onChange={(e) => setEditRoomName(e.target.value)}
+                                    className={`w-full px-4 py-3 rounded-xl border-2 outline-none transition-colors ${isDarkMode
+                                        ? 'bg-slate-800 border-slate-600 text-white placeholder-slate-500 focus:border-orange-500'
+                                        : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-400 focus:border-orange-500'
+                                        }`}
+                                    placeholder="Nhập tên phòng"
+                                />
+                            </div>
+
+                            {/* Chọn biểu tượng */}
+                            <div>
+                                <label className={`block text-sm font-semibold mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                    Biểu tượng phòng
+                                </label>
+                                <div className="grid grid-cols-6 gap-3">
+                                    {Object.keys(roomIconMap).map(key => {
+                                        const Icon = roomIconMap[key];
+                                        const isSelected = editRoomIcon === key;
+                                        return (
+                                            <button
+                                                key={key}
+                                                onClick={() => setEditRoomIcon(key)}
+                                                className={`aspect-square p-4 rounded-2xl flex items-center justify-center transition-all border-2 ${isSelected
+                                                    ? 'bg-orange-500/20 border-orange-500 text-orange-500 shadow-lg scale-105'
+                                                    : isDarkMode
+                                                        ? 'bg-slate-800 border-slate-700 text-gray-400 hover:border-slate-600 hover:bg-slate-700'
+                                                        : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200'
+                                                    }`}
+                                            >
+                                                <Icon size={32} />
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className={`flex items-center justify-end gap-3 px-8 py-6 border-t ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`}>
+                            <button
+                                onClick={() => setShowEditRoomModal(false)}
+                                className={`px-6 py-3 rounded-xl font-semibold transition-colors ${isDarkMode
+                                    ? 'bg-slate-800 hover:bg-slate-700 text-white'
+                                    : 'bg-gray-100 hover:bg-gray-200 text-gray-900'
+                                    }`}
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                onClick={handleUpdateRoom}
+                                className="px-6 py-3 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold transition-colors"
+                            >
+                                Lưu thay đổi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ========== DELETE ROOM MODAL (Confirmation) ========== */}
+            {showDeleteRoomModal && roomToDelete && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className={`w-full max-w-md rounded-3xl shadow-2xl overflow-hidden ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`}>
+                        {/* Body */}
+                        <div className="p-8 flex flex-col items-center text-center space-y-6">
+                            {/* Icon */}
+                            <div className="w-16 h-16 rounded-full bg-red-100/20 flex items-center justify-center">
+                                <Trash2 size={32} className="text-red-500" />
+                            </div>
+
+                            {/* Title */}
+                            <div>
+                                <h2 className={`text-2xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                    Xóa phòng
+                                </h2>
+                                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                    Bạn có chắc chắn muốn xóa phòng <span className="font-semibold">{getRoomName(roomToDelete)}</span>? Hành động này không thể hoàn tác.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className={`flex items-center justify-end gap-3 px-8 py-6 border-t ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`}>
+                            <button
+                                onClick={() => setShowDeleteRoomModal(false)}
+                                disabled={isDeleting}
+                                className={`px-6 py-3 rounded-xl font-semibold transition-colors ${isDarkMode
+                                    ? 'bg-slate-800 hover:bg-slate-700 text-white disabled:opacity-50'
+                                    : 'bg-gray-100 hover:bg-gray-200 text-gray-900 disabled:opacity-50'
+                                    }`}
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                onClick={handleDeleteRoom}
+                                disabled={isDeleting}
+                                className="px-6 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold transition-colors disabled:opacity-50"
+                            >
+                                {isDeleting ? 'Đang xóa...' : 'Xóa'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ========== DEVICE CONTROL MODAL ========== */}
             {showDeviceModal && selectedDevice && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center">
                     <div
@@ -788,7 +999,7 @@ const Rooms = () => {
                 </div>
             )}
 
-            {/* Add Device Modal */}
+            {/* ========== ADD DEVICE MODAL ========== */}
             {showAddModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center">
                     <div
@@ -883,7 +1094,7 @@ const Rooms = () => {
                 </div>
             )}
 
-            {/* Add Room Modal */}
+            {/* ========== ADD ROOM MODAL ========== */}
             {showAddRoomModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center">
                     <div

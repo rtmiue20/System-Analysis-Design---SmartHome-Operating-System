@@ -26,12 +26,12 @@ namespace SM_OS.Entities
         public int SensorDeviceId { get; set; }
 
         [ForeignKey("SensorDeviceId")]
-        public SmartDevice SensorDevice { get; set; } = null!;
+        public SmartDevice? SensorDevice { get; set; } = null!;
 
         // 2. THEN: Thiết bị đóng vai trò thực thi hành động
         public int ActionDeviceId { get; set; }
 
         [ForeignKey("ActionDeviceId")]
-        public SmartDevice ActionDevice { get; set; } = null!;
+        public SmartDevice? ActionDevice { get; set; } = null!;
     }
 }

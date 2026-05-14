@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using SM_OS.Entities;
 using SM_OS.Services.Interfaces;
 
@@ -6,6 +8,7 @@ namespace SM_OS.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class SchedulesController : ControllerBase
     {
         private readonly ISchedulesService _schedulesService;
