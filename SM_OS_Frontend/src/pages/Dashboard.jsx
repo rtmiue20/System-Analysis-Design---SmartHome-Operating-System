@@ -1,13 +1,15 @@
 ﻿/* eslint-disable react-hooks/set-state-in-effect */
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Bell, Clock, MapPin, Lightbulb, Snowflake, Speaker,
     ChevronRight, Zap, Activity, Moon, PowerOff
 } from 'lucide-react';
+import { LanguageContext } from '../contexts/LanguageContext';
 
 const Dashboard = () => {
     const navigate = useNavigate();
+    const { t } = useContext(LanguageContext);
     const [rooms, setRooms] = useState([]);
     const [devices, setDevices] = useState([]);
     const [scenes, setScenes] = useState([]);
@@ -16,7 +18,8 @@ const Dashboard = () => {
     const [activeRoomFilter, setActiveRoomFilter] = useState('All');
     const [activeScene, setActiveScene] = useState(null);
     const [currentDate, setCurrentDate] = useState(new Date());
-    const [location, setLocation] = useState("Đang lấy vị trí...");
+    const [location, setLocation] = useState(t('dashboard.loading', "Getting location..."));
+    const [weather, setWeather] = useState({ city: t('dashboard.loading', "Loading..."), temp: "--", humidity: "--" });
     const [notifications, setNotifications] = useState([]);
     const [showNotifications, setShowNotifications] = useState(false);
     const notifRef = useRef(null);
@@ -24,11 +27,14 @@ const Dashboard = () => {
     const hour = currentDate.getHours();
     const isDarkMode = hour >= 18 || hour < 6;
 
-    let greeting = "Chào buổi sáng!";
-    if (hour >= 12 && hour < 18) greeting = "Chào buổi chiều!";
-    else if (hour >= 18 || hour < 5) greeting = "Chào buổi tối!";
+    let greeting = t('dashboard.greeting_morning');
+    if (hour >= 12 && hour < 18) greeting = t('dashboard.greeting_afternoon');
+    else if (hour >= 18 || hour < 5) greeting = t('dashboard.greeting_evening');
 
-    const currentTimeString = currentDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    const currentTimeString = currentDate.toLocaleTimeString(
+        t('common.language', 'vi-VN') === 'vi' ? 'vi-VN' : 'en-US',
+        { hour: '2-digit', minute: '2-digit' }
+    );
 
     const API_BASE_URL = 'http://localhost:5000/api';
     const token = localStorage.getItem('token');
@@ -45,24 +51,39 @@ const Dashboard = () => {
     };
 
     useEffect(() => {
+        const timer = setInterval(() => setCurrentDate(new Date()), 60000);
         if ("geolocation" in navigator) {
             navigator.geolocation.getCurrentPosition(async (position) => {
                 const { latitude, longitude } = position.coords;
+
                 try {
-                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-                    const data = await res.json();
-                    const city = data.address.city || data.address.state || data.address.country || "Chưa rõ vị trí";
-                    setLocation(city);
+                    const API_KEY = "ec9ce2603dc3eb72d41d60403b425dbc";
+                    const lang = t('common.language', 'vi');
+                    const response = await fetch(
+                        `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${API_KEY}&lang=${lang}`
+                    );
+                    const data = await response.json();
+
+                    if (data.cod === 200) {
+                        setWeather({
+                            city: data.name,
+                            temp: Math.round(data.main.temp),
+                            humidity: data.main.humidity
+                        });
+                        setLocation(data.name);
+                    }
                 } catch (error) {
-                    setLocation("Không thể xác định vị trí");
+                    console.error("Error fetching weather:", error);
+                    setLocation(t('dashboard.location_error', "Unknown"));
                 }
-            }, () => {
-                setLocation("Đã từ chối quyền vị trí");
+            }, (error) => {
+                console.error("GPS Error:", error);
+                setLocation(t('dashboard.location_permission_denied', "Location permission denied"));
             });
-        } else {
-            setLocation("Trình duyệt không hỗ trợ");
         }
-    }, []);
+
+        return () => clearInterval(timer);
+    }, [t]);
 
     const fetchDashboardData = useCallback(async () => {
         try {
@@ -79,11 +100,14 @@ const Dashboard = () => {
             if (roomsRes.ok) setRooms(await roomsRes.json());
             if (devicesRes.ok) setDevices(await devicesRes.json());
             if (scenesRes.ok) setScenes(await scenesRes.json());
-            if (automationsRes.ok) setAutomations(await automationsRes.json());
+            if (automationsRes.ok) {
+                const data = await automationsRes.json();
+                setAutomations(data);
+            }
             if (schedulesRes.ok) setSchedules(await schedulesRes.json());
 
         } catch (error) {
-            console.error("Lỗi kết nối đến Backend:", error);
+            console.error("Connection error:", error);
         }
     }, [getAuthHeaders]);
 
@@ -110,8 +134,9 @@ const Dashboard = () => {
         setDevices(prevDevices => prevDevices.map(device => {
             const deviceId = device.deviceId || device.id || device.DeviceId || device.Id;
             if (deviceId === id) {
-                const deviceName = device.name || device.Name || "Thiết bị";
-                addNotification(`Đã ${newStatus === "On" ? "bật" : "tắt"} thiết bị: ${deviceName}`);
+                const deviceName = device.name || device.Name || "Device";
+                const action = newStatus === "On" ? t('devices.turned_on') : t('devices.turned_off');
+                addNotification(`${action}: ${deviceName}`);
                 return { ...device, status: newStatus, Status: newStatus };
             }
             return device;
@@ -124,18 +149,18 @@ const Dashboard = () => {
                 body: JSON.stringify(newStatus)
             });
         } catch (error) {
-            console.error("Lỗi khi cập nhật trạng thái lên DB:", error);
-            addNotification("Lỗi: Không thể lưu trạng thái thiết bị!");
+            console.error("Error updating device status:", error);
+            addNotification(t('common.error') + ": " + t('devices.status_error', "Cannot save device status"));
             fetchDashboardData();
         }
     };
 
     const handleExecuteScene = async (scene) => {
         const sceneId = scene.sceneId || scene.id || scene.SceneId || scene.Id;
-        const sceneName = scene.name || scene.Name || "Ngữ cảnh";
-        
+        const sceneName = scene.name || scene.Name || "Scene";
+
         setActiveScene(sceneId);
-        addNotification(`Đã kích hoạt ngữ cảnh: ${sceneName}`);
+        addNotification(`${t('dashboard.scene_activated', "Scene activated")}: ${sceneName}`);
 
         const sceneActions = scene.actions || scene.Actions;
         if (sceneActions && Array.isArray(sceneActions)) {
@@ -154,27 +179,42 @@ const Dashboard = () => {
             });
             fetchDashboardData();
         } catch (error) {
-            console.error("Lỗi khi chạy ngữ cảnh:", error);
+            console.error("Error executing scene:", error);
             fetchDashboardData();
         }
     };
 
     const handleToggleAutomation = async (rule) => {
         const ruleId = rule.id || rule.Id;
-        const ruleName = rule.name || rule.Name || "Quy tắc";
         const currentActive = rule.isActive !== undefined ? rule.isActive : rule.IsActive;
-        const updatedRule = { ...rule, isActive: !currentActive, IsActive: !currentActive };
+        const newActive = !currentActive;
+        const ruleName = rule.ruleName || rule.RuleName || rule.name || 'Automation';
 
-        setAutomations(prev => prev.map(a => (a.id || a.Id) === ruleId ? updatedRule : a));
-        addNotification(`Đã ${!currentActive ? 'bật' : 'tắt'} tự động hóa: ${ruleName}`);
+        setAutomations(prev => prev.map(a => (a.id || a.Id) === ruleId ? { ...a, isActive: newActive } : a));
+        addNotification(`${newActive ? t('common.yes') : t('common.no')}: ${ruleName}`);
+
+        const operator = rule.conditionOperator === '==' ? '==' : rule.conditionOperator;
 
         try {
-            await fetch(`${API_BASE_URL}/Automations/${ruleId}`, {
+            const res = await fetch(`${API_BASE_URL}/Automations/${ruleId}`, {
                 method: 'PUT',
                 headers: getAuthHeaders(),
-                body: JSON.stringify(updatedRule)
+                body: JSON.stringify({
+                    id: ruleId,
+                    ruleName: rule.ruleName || rule.RuleName,
+                    sensorDeviceId: rule.sensorDeviceId || rule.SensorDeviceId,
+                    actionDeviceId: rule.actionDeviceId || rule.ActionDeviceId,
+                    conditionOperator: operator,
+                    conditionValue: rule.conditionValue ?? rule.ConditionValue ?? 0,
+                    targetStatus: rule.targetStatus || rule.TargetStatus || 'On',
+                    isActive: newActive
+                })
             });
+            if (!res.ok) {
+                fetchDashboardData();
+            }
         } catch (error) {
+            console.error('Error toggling automation:', error);
             fetchDashboardData();
         }
     };
@@ -182,37 +222,48 @@ const Dashboard = () => {
     const handleToggleSchedule = async (schedule) => {
         const schedId = schedule.id || schedule.Id;
         const currentActive = schedule.isActive !== undefined ? schedule.isActive : schedule.IsActive;
-        const updatedSchedule = { ...schedule, isActive: !currentActive, IsActive: !currentActive };
+        const newActive = !currentActive;
 
-        setSchedules(prev => prev.map(s => (s.id || s.Id) === schedId ? updatedSchedule : s));
+        setSchedules(prev => prev.map(s => (s.id || s.Id) === schedId ? { ...s, isActive: newActive } : s));
 
-        const deviceMatch = devices.find(d => (d.deviceId || d.id || d.DeviceId || d.Id) === (schedule.smartDeviceId || schedule.SmartDeviceId));
-        const deviceName = deviceMatch?.name || deviceMatch?.Name || "Thiết bị";
-        addNotification(`Đã ${!currentActive ? 'bật' : 'tắt'} lịch trình cho: ${deviceName}`);
+        const deviceMatch = devices.find(d =>
+            Number(d.deviceId || d.id || d.DeviceId || d.Id) === Number(schedule.smartDeviceId || schedule.SmartDeviceId)
+        );
+        const deviceName = deviceMatch?.name || deviceMatch?.Name || 'Device';
+        addNotification(`${t('common.yes')}: ${deviceName}`);
 
         try {
-            await fetch(`${API_BASE_URL}/Schedules/${schedId}`, {
+            const res = await fetch(`${API_BASE_URL}/Schedules/${schedId}`, {
                 method: 'PUT',
                 headers: getAuthHeaders(),
-                body: JSON.stringify(updatedSchedule)
+                body: JSON.stringify({
+                    id: schedId,
+                    smartDeviceId: schedule.smartDeviceId || schedule.SmartDeviceId,
+                    triggerTime: schedule.triggerTime || schedule.TriggerTime,
+                    daysOfWeek: schedule.daysOfWeek || schedule.DaysOfWeek,
+                    targetStatus: schedule.targetStatus || schedule.TargetStatus || 'On',
+                    isActive: newActive
+                })
             });
+            if (!res.ok) {
+                fetchDashboardData();
+            }
         } catch (error) {
+            console.error('Error toggling schedule:', error);
             fetchDashboardData();
         }
     };
 
-    // NEW: Handle room card click to navigate to Rooms page with selected room
     const handleRoomCardClick = (room) => {
         const rId = room.roomId || room.id || room.RoomId || room.Id;
-        // Store selected room in localStorage to pass to Rooms page
         localStorage.setItem('selectedRoomId', rId);
         navigate('/rooms');
     };
 
     const getSceneIcon = (name) => {
         const lowerName = name?.toLowerCase() || '';
-        if (lowerName.includes('ngủ') || lowerName.includes('đêm')) return <Moon size={20} />;
-        if (lowerName.includes('tắt')) return <PowerOff size={20} />;
+        if (lowerName.includes('sleep') || lowerName.includes('night') || lowerName.includes('ngủ') || lowerName.includes('đêm')) return <Moon size={20} />;
+        if (lowerName.includes('off') || lowerName.includes('tắt')) return <PowerOff size={20} />;
         return <Activity size={20} />;
     };
 
@@ -227,14 +278,52 @@ const Dashboard = () => {
     const formatTimeOnly = (isoString) => {
         if (!isoString) return '';
         const date = new Date(isoString);
-        return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+        const locale = t('common.language', 'vi') === 'vi' ? 'vi-VN' : 'en-US';
+        return date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
     };
 
-    const roomImages = [
-        "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
-        "https://images.unsplash.com/photo-1556910103-1c02745aae4d?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80",
-        "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80"
-    ];
+    const roomImageMap = {
+        'phòng khách': 'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=1200&q=80',
+        'living room': 'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=1200&q=80',
+        'phòng bếp': 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1200&q=80',
+        'kitchen': 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1200&q=80',
+        'bếp': 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1200&q=80',
+        'phòng bếp & ăn': 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1200&q=80',
+        'gara': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&q=80',
+        'garage': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&q=80',
+        'gara ô tô': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&q=80',
+        'phòng ngủ master': 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=1200&q=80',
+        'master bedroom': 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=1200&q=80',
+        'phòng ngủ': 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=1200&q=80',
+        'bedroom': 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=1200&q=80',
+        'phòng ngủ bé gái': 'https://images.unsplash.com/photo-1616627547584-bf28cee262db?w=1200&q=80',
+        'phòng ngủ bé trai': 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1200&q=80',
+        'phòng làm việc': 'https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=1200&q=80',
+        'office': 'https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=1200&q=80',
+        'phòng sinh hoạt': 'https://images.unsplash.com/photo-1560185007-cde436f6a4d0?w=1200&q=80',
+        'phòng sinh hoạt chung': 'https://images.unsplash.com/photo-1560185007-cde436f6a4d0?w=1200&q=80',
+        'phòng thờ': 'https://unsplash.com/photos/a-woman-is-praying-in-a-church-g2R2XuDuRVw',
+        'sân thượng': 'https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=1200&q=80',
+        'rooftop': 'https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=1200&q=80',
+        'sân thượng bbq': 'https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=1200&q=80',
+        'phòng giặt': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&q=80',
+        'laundry': 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&q=80',
+        'phòng giặt sấy': 'https://images.unsplash.com/photo-1626806787461-102c1bfaaea1?w=1200&q=80',
+        'hành lang': 'https://images.unsplash.com/photo-1600566752355-35792bedcfea?w=1200&q=80',
+        'hallway': 'https://images.unsplash.com/photo-1600566752355-35792bedcfea?w=1200&q=80',
+        'hành lang & cầu thang': 'https://images.unsplash.com/photo-1600566752355-35792bedcfea?w=1200&q=80',
+        'phòng gym': 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1200&q=80',
+        'gym': 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1200&q=80',
+    };
+
+    const defaultRoomImage = 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&q=80';
+
+    const getRoomImage = (name) => {
+        const key = (name || '').toLowerCase().trim();
+        if (roomImageMap[key]) return roomImageMap[key];
+        const matched = Object.keys(roomImageMap).find(k => key.includes(k) || k.includes(key));
+        return matched ? roomImageMap[matched] : defaultRoomImage;
+    };
 
     const mainBgClass = isDarkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-800";
     const headerTextClass = isDarkMode ? "text-white" : "text-gray-900";
@@ -260,9 +349,9 @@ const Dashboard = () => {
                             <span className="w-1 h-1 rounded-full bg-gray-400 hidden md:block"></span>
                             <span className="flex items-center gap-1.5"><MapPin size={16} /> {location}</span>
                             <span className="w-1 h-1 rounded-full bg-gray-400 hidden md:block"></span>
-                            <span className="flex items-center gap-1.5">🌡️ 24°C</span>
+                            <span className="flex items-center gap-1.5">🌡️ {weather.temp}°C</span>
                             <span className="w-1 h-1 rounded-full bg-gray-400 hidden md:block"></span>
-                            <span className="flex items-center gap-1.5">💧 50%</span>
+                            <span className="flex items-center gap-1.5">💧 {weather.humidity}%</span>
                         </div>
                     </div>
 
@@ -281,7 +370,7 @@ const Dashboard = () => {
                             {showNotifications && (
                                 <div className={`absolute right-0 mt-3 w-80 shadow-2xl rounded-2xl z-50 overflow-hidden border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}>
                                     <div className={`px-4 py-3 border-b font-bold ${isDarkMode ? 'border-gray-700 text-white' : 'border-gray-100 text-gray-900'}`}>
-                                        Thông báo hệ thống
+                                        {t('dashboard.notifications')}
                                     </div>
                                     <div className="max-h-64 overflow-y-auto">
                                         {notifications.length > 0 ? (
@@ -289,12 +378,12 @@ const Dashboard = () => {
                                                 <div key={notif.id} className={`px-4 py-3 border-b text-sm ${isDarkMode ? 'border-gray-700 text-gray-300' : 'border-gray-50 text-gray-700'}`}>
                                                     <p>{notif.message}</p>
                                                     <span className="text-xs opacity-60 mt-1 block">
-                                                        {notif.time.toLocaleTimeString('vi-VN')}
+                                                        {notif.time.toLocaleTimeString(t('common.language', 'vi') === 'vi' ? 'vi-VN' : 'en-US')}
                                                     </span>
                                                 </div>
                                             ))
                                         ) : (
-                                            <p className="px-4 py-6 text-center text-sm opacity-60">Chưa có thông báo nào</p>
+                                            <p className="px-4 py-6 text-center text-sm opacity-60">{t('dashboard.no_notifications')}</p>
                                         )}
                                     </div>
                                 </div>
@@ -304,40 +393,39 @@ const Dashboard = () => {
                     </div>
                 </header>
 
-                {/* NGỮ CẢNH (SCENES) */}
+                {/* SCENES */}
                 <section className="mb-12">
-                    <h3 className={`text-xl font-bold mb-5 ${headerTextClass}`}>Ngữ cảnh nhanh</h3>
+                    <h3 className={`text-xl font-bold mb-5 ${headerTextClass}`}>{t('dashboard.scenes')}</h3>
                     <div className="flex gap-4 flex-wrap">
                         {scenes.length > 0 ? (
                             scenes.map((scene) => {
                                 const sId = scene.sceneId || scene.id || scene.SceneId || scene.Id;
-                                const sceneName = scene.name || scene.Name || "Ngữ cảnh";
+                                const sceneName = scene.name || scene.Name || "Scene";
                                 const isActive = activeScene === sId;
 
                                 return (
                                     <button
                                         key={sId}
                                         onClick={() => handleExecuteScene(scene)}
-                                        className={`flex items-center gap-3 px-6 py-3.5 rounded-2xl font-semibold transition-all duration-200 transform ${
-                                            isActive
+                                        className={`flex items-center gap-3 px-6 py-3.5 rounded-2xl font-semibold transition-all duration-200 transform ${isActive
                                                 ? "bg-orange-500 text-white shadow-lg shadow-orange-500/30 hover:bg-orange-600"
                                                 : sceneInactiveBg
-                                        }`}
+                                            }`}
                                     >
                                         {getSceneIcon(sceneName)} {sceneName}
                                     </button>
                                 );
                             })
                         ) : (
-                            <p className="text-gray-400 italic">Chưa có ngữ cảnh nào được thiết lập.</p>
+                            <p className="text-gray-400 italic">{t('dashboard.no_scenes')}</p>
                         )}
                     </div>
                 </section>
 
-                {/* THIẾT BỊ & THANH LỌC */}
+                {/* DEVICES & FILTER */}
                 <section className="mb-14">
                     <div className="flex flex-col md:flex-row md:items-end justify-between mb-6 gap-4">
-                        <h3 className={`text-xl font-bold ${headerTextClass}`}>Thiết bị ({filteredDevices.length})</h3>
+                        <h3 className={`text-xl font-bold ${headerTextClass}`}>{t('dashboard.devices')} ({filteredDevices.length})</h3>
 
                         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                             <button
@@ -347,11 +435,11 @@ const Dashboard = () => {
                                     : sceneInactiveBg
                                     }`}
                             >
-                                Tất cả thiết bị
+                                {t('dashboard.all_devices')}
                             </button>
                             {rooms.map(room => {
                                 const rId = room.roomId || room.id || room.RoomId || room.Id;
-                                const rName = room.roomName || room.RoomName || room.name || room.Name || "Khu vực";
+                                const rName = room.roomName || room.RoomName || room.name || room.Name || "Area";
                                 return (
                                     <button
                                         key={rId}
@@ -372,13 +460,13 @@ const Dashboard = () => {
                         {filteredDevices.length > 0 ? (
                             filteredDevices.map((device) => {
                                 const dId = device.deviceId || device.id || device.DeviceId || device.Id;
-                                const dName = device.name || device.Name || "Thiết bị";
+                                const dName = device.name || device.Name || "Device";
                                 const dType = device.type || device.Type;
                                 const dStatus = device.status || device.Status;
                                 const isOn = dStatus === "On" || dStatus === "on";
 
                                 const roomMatch = rooms.find(r => (r.roomId || r.id || r.RoomId || r.Id) === (device.roomId || device.RoomId));
-                                const roomNameText = roomMatch?.roomName || roomMatch?.RoomName || roomMatch?.name || roomMatch?.Name || "Chưa phân phòng";
+                                const roomNameText = roomMatch?.roomName || roomMatch?.RoomName || roomMatch?.name || roomMatch?.Name || "Unassigned";
 
                                 return (
                                     <div key={dId} className={`p-6 rounded-3xl border shadow-sm hover:shadow-md flex flex-col justify-between h-40 relative transition-all duration-300 ${cardBgClass}`}>
@@ -400,22 +488,22 @@ const Dashboard = () => {
                                 );
                             })
                         ) : (
-                            <p className="text-gray-400 italic">Không có thiết bị nào trong khu vực này.</p>
+                            <p className="text-gray-400 italic">{t('dashboard.no_devices')}</p>
                         )}
                     </div>
                 </section>
 
-                {/* LỊCH TRÌNH VÀ TỰ ĐỘNG HÓA */}
+                {/* AUTOMATION & SCHEDULES */}
                 <section className="mb-14">
-                    <h3 className={`text-xl font-bold mb-6 ${headerTextClass}`}>Thông minh & Lịch trình</h3>
+                    <h3 className={`text-xl font-bold mb-6 ${headerTextClass}`}>{t('dashboard.smart_automation')}</h3>
 
                     {automations.length === 0 && schedules.length === 0 ? (
-                        <p className="text-gray-400 italic">Chưa có lịch trình hay tự động hóa nào.</p>
+                        <p className="text-gray-400 italic">{t('dashboard.no_automation')}</p>
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                             {schedules.map(sched => {
                                 const deviceMatch = devices.find(d => (d.deviceId || d.id || d.DeviceId || d.Id) === (sched.smartDeviceId || sched.SmartDeviceId));
-                                const deviceName = deviceMatch?.name || deviceMatch?.Name || "Thiết bị";
+                                const deviceName = deviceMatch?.name || deviceMatch?.Name || "Device";
                                 const isActiveCard = sched.isActive !== undefined ? sched.isActive : sched.IsActive;
                                 const action = sched.action || sched.Action;
                                 const schedTime = sched.scheduledTime || sched.ScheduledTime;
@@ -432,8 +520,8 @@ const Dashboard = () => {
                                             </div>
                                         </div>
                                         <div>
-                                            <h4 className={`font-bold text-lg ${headerTextClass}`}>{deviceName} {action === "On" ? "Bật" : "Tắt"}</h4>
-                                            <p className={`text-sm font-medium mt-1 ${subTextClass}`}>Lúc {formatTimeOnly(schedTime)}</p>
+                                            <h4 className={`font-bold text-lg ${headerTextClass}`}>{deviceName} {action === "On" ? t('devices.on') : t('devices.off')}</h4>
+                                            <p className={`text-sm font-medium mt-1 ${subTextClass}`}>{t('schedules.time')}: {formatTimeOnly(schedTime)}</p>
                                         </div>
                                     </div>
                                 );
@@ -441,7 +529,7 @@ const Dashboard = () => {
 
                             {automations.map(auto => {
                                 const isActiveCard = auto.isActive !== undefined ? auto.isActive : auto.IsActive;
-                                const autoName = auto.name || auto.Name;
+                                const autoName = auto.ruleName || auto.RuleName || auto.name || auto.Name || 'Automation';
                                 const autoBg = isDarkMode ? (isActiveCard ? 'border-blue-500/50 bg-gray-800' : 'border-gray-700 bg-gray-900') : (isActiveCard ? 'border-blue-200 bg-white' : 'border-gray-100 bg-gray-50/50');
 
                                 return (
@@ -456,7 +544,7 @@ const Dashboard = () => {
                                         </div>
                                         <div>
                                             <h4 className={`font-bold text-lg truncate ${headerTextClass}`} title={autoName}>{autoName}</h4>
-                                            <p className={`text-sm font-medium mt-1 ${subTextClass}`}>Tự động hóa</p>
+                                            <p className={`text-sm font-medium mt-1 ${subTextClass}`}>{t('automations.title')}</p>
                                         </div>
                                     </div>
                                 );
@@ -465,20 +553,20 @@ const Dashboard = () => {
                     )}
                 </section>
 
-                {/* KHU VỰC / PHÒNG - UPDATED WITH NAVIGATION */}
+                {/* AREAS */}
                 <section className="pb-16">
-                    <h3 className={`text-xl font-bold mb-6 ${headerTextClass}`}>Khu vực</h3>
+                    <h3 className={`text-xl font-bold mb-6 ${headerTextClass}`}>{t('dashboard.areas')}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                         {rooms.length > 0 ? (
                             rooms.map((room, index) => {
                                 const rId = room.roomId || room.id || room.RoomId || room.Id;
-                                const roomNameText = room.roomName || room.RoomName || room.name || room.Name || `Phòng ${index + 1}`;
+                                const roomNameText = room.roomName || room.RoomName || room.name || room.Name || `Room ${index + 1}`;
                                 const activeCount = devices.filter(d => (d.roomId || d.RoomId) === rId && (d.status === "On" || d.Status === "On")).length;
                                 const allOff = activeCount === 0;
 
                                 return (
                                     <div key={rId} className="relative h-60 rounded-3xl overflow-hidden group cursor-pointer shadow-sm hover:shadow-lg transition-shadow">
-                                        <img src={roomImages[index % roomImages.length]} alt={roomNameText} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                                        <img src={getRoomImage(roomNameText)} alt={roomNameText} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
 
                                         <div className="absolute top-5 left-5 bg-black/30 backdrop-blur-md px-4 py-1.5 rounded-xl border border-white/20 shadow-sm">
@@ -489,7 +577,7 @@ const Dashboard = () => {
                                             <div className="text-white">
                                                 <h4 className="font-bold text-2xl tracking-wide">{roomNameText}</h4>
                                                 <p className="text-base font-medium text-gray-200 mt-2 opacity-90">
-                                                    {allOff ? "Tất cả đã tắt" : `${activeCount} Thiết bị đang bật`}
+                                                    {allOff ? t('dashboard.all_off') : `${activeCount} ${t('dashboard.devices_on')}`}
                                                 </p>
                                             </div>
                                             <button
@@ -503,7 +591,7 @@ const Dashboard = () => {
                                 );
                             })
                         ) : (
-                            <p className="text-gray-400 italic">Chưa có phòng nào được thiết lập.</p>
+                            <p className="text-gray-400 italic">{t('dashboard.no_areas')}</p>
                         )}
                     </div>
                 </section>

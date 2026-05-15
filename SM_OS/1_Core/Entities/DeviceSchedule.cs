@@ -24,6 +24,6 @@ namespace SM_OS.Entities
         public int SmartDeviceId { get; set; }
 
         [ForeignKey("SmartDeviceId")]
-        public SmartDevice SmartDevice { get; set; } = null!;
+        public SmartDevice? SmartDevice { get; set; } = null!;
     }
 }

@@ -31,6 +31,36 @@ const Toast = ({ message, type = 'info', isDark }) => {
     );
 };
 
+// ==================== DELETE CONFIRM MODAL ====================
+const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, title, message, isDark }) => {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className={`w-full max-w-sm rounded-2xl shadow-2xl p-8 flex flex-col items-center gap-4 ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
+                <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center">
+                    <Trash2 size={28} className="text-red-500" />
+                </div>
+                <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{title}</h2>
+                <p className={`text-center text-sm ${isDark ? 'text-slate-300' : 'text-gray-500'}`}>{message}</p>
+                <div className="flex gap-3 mt-2 w-full">
+                    <button
+                        onClick={onClose}
+                        className={`flex-1 py-2 rounded-xl font-semibold border transition-colors ${isDark ? 'border-slate-600 text-white hover:bg-slate-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+                    >
+                        Hủy
+                    </button>
+                    <button
+                        onClick={onConfirm}
+                        className="flex-1 py-2 rounded-xl font-semibold bg-red-500 text-white hover:bg-red-600 transition-colors"
+                    >
+                        Xóa
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // ==================== TOGGLE COMPONENT ====================
 const Toggle = ({ checked, onChange, disabled = false }) => (
     <button
@@ -117,10 +147,10 @@ const ScheduleRow = ({ item, onToggle, onEdit, isDark, onDelete, loading }) => (
                     Device ID: {item.smartDeviceId}
                 </div>
                 <div className={`text-sm mt-1 ${isDark ? 'text-slate-300' : 'text-gray-500'}`}>
-                    {new Date(item.scheduledTime).toLocaleString('vi-VN')}
+                    {item.triggerTime} — {item.daysOfWeek}
                 </div>
                 <div className={`text-xs mt-1 ${isDark ? 'text-slate-400' : 'text-gray-400'}`}>
-                    Action: {item.action}
+                    Action: {item.targetStatus}
                 </div>
             </div>
         </div>
@@ -378,8 +408,9 @@ const AddAutomationModal = ({ isOpen, onClose, isDark, onAdd, editingItem = null
 // ==================== ADD SCHEDULE MODAL ====================
 const AddScheduleModal = ({ isOpen, onClose, isDark, onAdd, editingItem = null, devices = [] }) => {
     const [smartDeviceId, setSmartDeviceId] = useState('');
-    const [scheduledTime, setScheduledTime] = useState('');
-    const [action, setAction] = useState('On');
+    const [triggerTime, setTriggerTime] = useState('');
+    const [daysOfWeek, setDaysOfWeek] = useState([]);
+    const [targetStatus, setTargetStatus] = useState('On');
     const [isActive, setIsActive] = useState(true);
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
@@ -387,8 +418,9 @@ const AddScheduleModal = ({ isOpen, onClose, isDark, onAdd, editingItem = null, 
     useEffect(() => {
         if (editingItem) {
             setSmartDeviceId(editingItem.smartDeviceId || '');
-            setScheduledTime(editingItem.scheduledTime?.slice(0, 16) || '');
-            setAction(editingItem.action || 'On');
+            setTriggerTime(editingItem.triggerTime?.slice(0, 5) || '');
+            setDaysOfWeek(editingItem.daysOfWeek ? editingItem.daysOfWeek.split(',') : []);
+            setTargetStatus(editingItem.targetStatus || 'On');
             setIsActive(editingItem.isActive !== undefined ? editingItem.isActive : true);
             setErrors({});
         } else {
@@ -398,8 +430,9 @@ const AddScheduleModal = ({ isOpen, onClose, isDark, onAdd, editingItem = null, 
 
     const resetForm = () => {
         setSmartDeviceId('');
-        setScheduledTime('');
-        setAction('On');
+        setTriggerTime('');
+        setDaysOfWeek([]);
+        setTargetStatus('On');
         setIsActive(true);
         setErrors({});
     };
@@ -411,15 +444,8 @@ const AddScheduleModal = ({ isOpen, onClose, isDark, onAdd, editingItem = null, 
             newErrors.smartDeviceId = 'Vui lòng chọn thiết bị';
         }
 
-        if (!scheduledTime) {
-            newErrors.scheduledTime = 'Vui lòng chọn thời gian';
-        } else {
-            const selectedTime = new Date(scheduledTime);
-            const now = new Date();
-            if (selectedTime < now && !editingItem) {
-                newErrors.scheduledTime = 'Thời gian phải lớn hơn thời gian hiện tại';
-            }
-        }
+        if (!triggerTime) newErrors.triggerTime = 'Vui lòng chọn giờ kích hoạt';
+        if (daysOfWeek.length === 0) newErrors.daysOfWeek = 'Vui lòng chọn ít nhất một ngày';
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -434,8 +460,9 @@ const AddScheduleModal = ({ isOpen, onClose, isDark, onAdd, editingItem = null, 
         try {
             const scheduleData = {
                 smartDeviceId: parseInt(smartDeviceId),
-                scheduledTime: scheduledTime ? new Date(scheduledTime).toISOString() : null,
-                action: action,
+                triggerTime: triggerTime + ':00',         // "07:30" → "07:30:00"
+                daysOfWeek: daysOfWeek.join(','),          // ["Monday","Friday"] → "Monday,Friday"
+                targetStatus: targetStatus,
                 isActive: isActive
             };
 
@@ -524,22 +551,33 @@ const AddScheduleModal = ({ isOpen, onClose, isDark, onAdd, editingItem = null, 
 
                     <div>
                         <label className={`block text-sm font-semibold mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                            THỜI GIAN THỰC HIỆN {errors.scheduledTime && <span className="text-red-500">*</span>}
+                            GIỜ KÍCH HOẠT {errors.triggerTime && <span className="text-red-500">*</span>}
                         </label>
                         <input
-                            type="datetime-local"
-                            value={scheduledTime}
-                            onChange={(e) => {
-                                setScheduledTime(e.target.value);
-                                if (errors.scheduledTime) setErrors({ ...errors, scheduledTime: '' });
-                            }}
-                            className={`w-full px-4 py-2 rounded-lg border ${isDark
-                                ? 'bg-gray-700 border-gray-600 text-white'
-                                : 'bg-gray-50 border-gray-300 text-gray-900'
-                                } focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.scheduledTime ? 'border-red-500' : ''
-                                }`}
+                            type="time"
+                            value={triggerTime}
+                            onChange={(e) => { setTriggerTime(e.target.value); if (errors.triggerTime) setErrors({ ...errors, triggerTime: '' }); }}
+                            className={`w-full px-4 py-2 rounded-lg border ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-300 text-gray-900'} focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.triggerTime ? 'border-red-500' : ''}`}
                         />
-                        {errors.scheduledTime && <p className="text-red-500 text-sm mt-1">{errors.scheduledTime}</p>}
+                        {errors.triggerTime && <p className="text-red-500 text-sm mt-1">{errors.triggerTime}</p>}
+
+                        <label className={`block text-sm font-semibold mt-4 mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                            NGÀY TRONG TUẦN {errors.daysOfWeek && <span className="text-red-500">*</span>}
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                            {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
+                                <label key={day} className={`flex items-center gap-1 cursor-pointer px-2 py-1 rounded border text-sm ${daysOfWeek.includes(day) ? 'bg-blue-500 text-white border-blue-500' : isDark ? 'border-gray-600 text-gray-300' : 'border-gray-300 text-gray-700'}`}>
+                                    <input type="checkbox" className="hidden" checked={daysOfWeek.includes(day)}
+                                        onChange={(e) => {
+                                            setDaysOfWeek(prev => e.target.checked ? [...prev, day] : prev.filter(d => d !== day));
+                                            if (errors.daysOfWeek) setErrors({ ...errors, daysOfWeek: '' });
+                                        }}
+                                    />
+                                    {day.slice(0, 3)}
+                                </label>
+                            ))}
+                        </div>
+                        {errors.daysOfWeek && <p className="text-red-500 text-sm mt-1">{errors.daysOfWeek}</p>}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -548,8 +586,8 @@ const AddScheduleModal = ({ isOpen, onClose, isDark, onAdd, editingItem = null, 
                                 HÀNH ĐỘNG
                             </label>
                             <select
-                                value={action}
-                                onChange={(e) => setAction(e.target.value)}
+                                value={targetStatus}
+                                onChange={(e) => setTargetStatus(e.target.value)}
                                 className={`w-full px-4 py-2 rounded-lg border ${isDark
                                     ? 'bg-gray-700 border-gray-600 text-white'
                                     : 'bg-gray-50 border-gray-300 text-gray-900'
@@ -630,6 +668,7 @@ const Automations = () => {
     const [error, setError] = useState(null);
     const [toast, setToast] = useState(null);
     const [operatingId, setOperatingId] = useState(null);
+    const [deleteConfirm, setDeleteConfirm] = useState(null);
 
     // Fetch data on component mount
     useEffect(() => {
@@ -690,7 +729,13 @@ const Automations = () => {
         setOperatingId(id);
         try {
             const updatedData = {
-                ...item,
+                id: item.id,
+                ruleName: item.ruleName,
+                sensorDeviceId: item.sensorDeviceId,
+                actionDeviceId: item.actionDeviceId,
+                conditionOperator: item.conditionOperator,
+                conditionValue: item.conditionValue,
+                targetStatus: item.targetStatus,
                 isActive: !item.isActive
             };
 
@@ -721,7 +766,11 @@ const Automations = () => {
         setOperatingId(id);
         try {
             const updatedData = {
-                ...item,
+                id: item.id,
+                smartDeviceId: item.smartDeviceId,
+                triggerTime: item.triggerTime,
+                daysOfWeek: item.daysOfWeek,
+                targetStatus: item.targetStatus,
                 isActive: !item.isActive
             };
 
@@ -804,35 +853,35 @@ const Automations = () => {
     /**
      * Delete automation with confirmation
      */
-    const handleDeleteAutomation = async (id) => {
-        if (!window.confirm('Bạn có chắc chắn muốn xóa quy tắc này?')) return;
-
-        setOperatingId(id);
-        try {
-            await axiosClient.delete(`/Automations/${id}`);
-            setAutomations((prev) => prev.filter((item) => item.id !== id));
-            setToast({ message: 'Xóa quy tắc thành công', type: 'success' });
-        } catch (error) {
-            console.error('Error deleting automation:', error);
-            setToast({ message: `Lỗi khi xóa: ${error.response?.data?.message || error.message}`, type: 'error' });
-        } finally {
-            setOperatingId(null);
-        }
+    const handleDeleteAutomation = (id) => {
+        const item = automations.find(a => a.id === id);
+        setDeleteConfirm({ type: 'automation', id, name: item?.ruleName || 'quy tắc này' });
     };
 
     /**
      * Delete schedule with confirmation
      */
-    const handleDeleteSchedule = async (id) => {
-        if (!window.confirm('Bạn có chắc chắn muốn xóa lịch trình này?')) return;
+    const handleDeleteSchedule = (id) => {
+        const item = schedules.find(s => s.id === id);
+        setDeleteConfirm({ type: 'schedule', id, name: `Device ID: ${item?.smartDeviceId || id}` });
+    };
 
+    const handleConfirmDelete = async () => {
+        if (!deleteConfirm) return;
+        const { type, id } = deleteConfirm;
+        setDeleteConfirm(null);
         setOperatingId(id);
         try {
-            await axiosClient.delete(`/Schedules/${id}`);
-            setSchedules((prev) => prev.filter((item) => item.id !== id));
-            setToast({ message: 'Xóa lịch trình thành công', type: 'success' });
+            if (type === 'automation') {
+                await axiosClient.delete(`/Automations/${id}`);
+                setAutomations(prev => prev.filter(item => item.id !== id));
+                setToast({ message: 'Xóa quy tắc thành công', type: 'success' });
+            } else {
+                await axiosClient.delete(`/Schedules/${id}`);
+                setSchedules(prev => prev.filter(item => item.id !== id));
+                setToast({ message: 'Xóa lịch trình thành công', type: 'success' });
+            }
         } catch (error) {
-            console.error('Error deleting schedule:', error);
             setToast({ message: `Lỗi khi xóa: ${error.response?.data?.message || error.message}`, type: 'error' });
         } finally {
             setOperatingId(null);
@@ -887,14 +936,20 @@ const Automations = () => {
                     <div>
                         {activeTab === 'automations' ? (
                             <button
-                                onClick={() => setIsAutomationModalOpen(true)}
+                                onClick={() => {
+                                    setEditingAutomation(null);
+                                    setIsAutomationModalOpen(true);
+                                }}
                                 className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 text-white font-semibold hover:bg-orange-600 shadow transition-colors"
                             >
                                 <Plus size={16} /> Thêm Tự Động Hóa
                             </button>
                         ) : (
                             <button
-                                onClick={() => setIsScheduleModalOpen(true)}
+                                    onClick={() => {
+                                        setEditingSchedule(null);
+                                        setIsScheduleModalOpen(true);
+                                    }}
                                 className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500 text-white font-semibold hover:bg-blue-600 shadow transition-colors"
                             >
                                 <Plus size={16} /> Thêm Lịch Trình
@@ -1001,6 +1056,15 @@ const Automations = () => {
 
             {/* Toast Notifications */}
             {toast && <Toast message={toast.message} type={toast.type} isDark={isDarkMode} />}
+
+            <DeleteConfirmModal
+                isOpen={!!deleteConfirm}
+                onClose={() => setDeleteConfirm(null)}
+                onConfirm={handleConfirmDelete}
+                title={deleteConfirm?.type === 'automation' ? 'Xóa quy tắc' : 'Xóa lịch trình'}
+                message={`Bạn có chắc chắn muốn xóa "${deleteConfirm?.name}"? Hành động này không thể hoàn tác.`}
+                isDark={isDarkMode}
+            />
         </div>
     );
 };
