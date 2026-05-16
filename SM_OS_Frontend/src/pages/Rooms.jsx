@@ -26,6 +26,8 @@ const Rooms = () => {
     const [showDeleteRoomModal, setShowDeleteRoomModal] = useState(false);
     const [roomToDelete, setRoomToDelete] = useState(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [deviceToDelete, setDeviceToDelete] = useState(null);
+    const [isDeletingDevice, setIsDeletingDevice] = useState(false);
 
     const { isDarkMode } = useTheme();
     const theme = getComponentTheme(isDarkMode);
@@ -243,17 +245,23 @@ const Rooms = () => {
 
             if (res.ok) {
                 const createdDevice = await res.json();
-                setDevices([...devices, createdDevice]);
-                setShowAddModal(false);
-                setNewDevice({ name: '', type: 'Light', roomId: null });
+                const normalizedDevice = {
+                    ...createdDevice,
+                    roomId: createdDevice.roomId || createdDevice.RoomId || getRoomId(selectedRoom),
+                    status: createdDevice.status || createdDevice.Status || 'Off'
+                };
+                setDevices(prev => [...prev, normalizedDevice]);
                 addToast('Đã thêm thiết bị thành công!', 'success');
             } else {
-                const errorData = await res.json();
+                const errorData = await res.json().catch(() => ({}));
                 addToast(errorData.message || 'Lỗi khi thêm thiết bị', 'error');
             }
         } catch (error) {
             console.error('Lỗi thêm thiết bị:', error);
             addToast('Lỗi: ' + error.message, 'error');
+        } finally {
+            setShowAddModal(false);
+            setNewDevice({ name: '', type: 'Light', roomId: null });
         }
     };
 
@@ -372,13 +380,38 @@ const Rooms = () => {
             } else {
                 const errorData = await res.json().catch(() => ({}));
                 console.error('Delete failed:', errorData);
-                addToast(errorData.message || 'Lỗi khi xóa phòng', 'error');
+                setShowDeleteRoomModal(false);
+                setRoomToDelete(null);
+                addToast('Không thể xóa phòng khi vẫn còn thiết bị bên trong!', 'error');
             }
         } catch (error) {
             console.error('Lỗi xóa phòng:', error);
             addToast('Lỗi kết nối server khi xóa phòng', 'error');
         } finally {
             setIsDeleting(false);
+        }
+    };
+
+    const handleDeleteDevice = async () => {
+        if (!deviceToDelete) return;
+        setIsDeletingDevice(true);
+        try {
+            const dId = getDeviceId(deviceToDelete);
+            const res = await fetch(`${API_BASE_URL}/Devices/${dId}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+            if (res.ok) {
+                setDevices(prev => prev.filter(d => getDeviceId(d) !== dId));
+                setDeviceToDelete(null);
+                addToast('Đã xóa thiết bị thành công!', 'success');
+            } else {
+                addToast('Xóa thiết bị thất bại', 'error');
+            }
+        } catch (err) {
+            addToast('Lỗi khi xóa thiết bị', 'error');
+        } finally {
+            setIsDeletingDevice(false);
         }
     };
 
@@ -644,7 +677,7 @@ const Rooms = () => {
                                             {/* Header: Icon + Toggle */}
                                             <div className="flex justify-between items-start mb-4">
                                                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors
-                                    ${isOn
+        ${isOn
                                                         ? 'bg-orange-100 text-orange-500'
                                                         : isDarkMode
                                                             ? 'bg-slate-700 text-slate-400'
@@ -653,16 +686,34 @@ const Rooms = () => {
                                                     {getDeviceIcon(dType, isOn)}
                                                 </div>
 
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleToggleDevice(dId, dStatus);
-                                                    }}
-                                                    className={`relative w-12 h-6 rounded-full transition-colors duration-300
-                                        ${isOn ? 'bg-orange-500' : isDarkMode ? 'bg-slate-600' : 'bg-gray-300'}`}
-                                                >
-                                                    <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-all duration-300 ${isOn ? 'translate-x-6' : ''}`} />
-                                                </button>
+                                                <div className="flex items-center gap-2">
+                                                    {/* Nút xóa — chỉ hiện khi đang tắt */}
+                                                    {!isOn && (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setDeviceToDelete(device);
+                                                            }}
+                                                            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100
+                    ${isDarkMode ? 'text-red-400 hover:bg-red-500/20' : 'text-red-400 hover:bg-red-50'}`}
+                                                            title="Xóa thiết bị"
+                                                        >
+                                                            <Trash2 size={15} />
+                                                        </button>
+                                                    )}
+
+                                                    {/* Toggle */}
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleToggleDevice(dId, dStatus);
+                                                        }}
+                                                        className={`relative w-12 h-6 rounded-full transition-colors duration-300
+                ${isOn ? 'bg-orange-500' : isDarkMode ? 'bg-slate-600' : 'bg-gray-300'}`}
+                                                    >
+                                                        <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-all duration-300 ${isOn ? 'translate-x-6' : ''}`} />
+                                                    </button>
+                                                </div>
                                             </div>
 
                                             {/* Device Name & Type */}
@@ -718,6 +769,41 @@ const Rooms = () => {
                     )}
                 </div>
             </div>
+
+            {/* ========== DELETE DEVICE MODAL ========== */}
+            {deviceToDelete && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className={`w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`}>
+                        <div className="p-8 flex flex-col items-center text-center space-y-4">
+                            <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center">
+                                <Trash2 size={28} className="text-red-500" />
+                            </div>
+                            <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                Xóa thiết bị
+                            </h2>
+                            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                Bạn có chắc chắn muốn xóa <span className="font-semibold">{getDeviceName(deviceToDelete)}</span>? Hành động này không thể hoàn tác.
+                            </p>
+                        </div>
+                        <div className={`flex gap-3 px-8 pb-8`}>
+                            <button
+                                onClick={() => setDeviceToDelete(null)}
+                                disabled={isDeletingDevice}
+                                className={`flex-1 py-3 rounded-xl font-semibold transition-colors ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-900'}`}
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                onClick={handleDeleteDevice}
+                                disabled={isDeletingDevice}
+                                className="flex-1 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold transition-colors disabled:opacity-50"
+                            >
+                                {isDeletingDevice ? 'Đang xóa...' : 'Xóa'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ========== EDIT ROOM MODAL (New Design) ========== */}
             {showEditRoomModal && editingRoom && (
