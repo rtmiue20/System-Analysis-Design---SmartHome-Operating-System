@@ -10,6 +10,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Rooms from './pages/Rooms';
 import RoomDetail from './pages/RoomDetail';
+import Scenes from './pages/Scenes';
 import MainLayout from './components/MainLayout';
 import Setting from './pages/Setting';
 import Automations from './pages/Automations';
@@ -38,6 +39,7 @@ function App() {
                                                 <Route path="/dashboard" element={<Dashboard />} />
                                                 <Route path="/rooms" element={<Rooms />} />
                                                 <Route path="/rooms/:roomId" element={<RoomDetail />} />
+                                                <Route path="/scenes" element={<MainLayout><Scenes /></MainLayout>} />
                                                 <Route path="/automations" element={<Automations />} />
                                                 <Route path="/settings" element={<Setting />} />
                                                 <Route path="/" element={<Navigate to="/dashboard" replace />} />

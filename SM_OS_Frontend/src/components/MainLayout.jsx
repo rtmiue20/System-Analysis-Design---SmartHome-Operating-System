@@ -15,6 +15,7 @@ const MainLayout = ({ children }) => {
     const menuItems = [
         { id: 'dashboard', label: t('menu.dashboard', 'Tổng quan'), icon: LayoutDashboard, path: '/dashboard' },
         { id: 'rooms', label: t('menu.rooms', 'Phòng'), icon: Layers, path: '/rooms' },
+        { id: 'scenes', label: t('menu.scenes', 'Ngữ cảnh'), icon: Zap, path: '/scenes' },  // ← thêm dòng này
         { id: 'automations', label: t('menu.automations', 'Tự động hóa'), icon: Zap, path: '/automations' },
         { id: 'settings', label: t('menu.settings', 'Cài đặt'), icon: Settings, path: '/settings' },
     ];

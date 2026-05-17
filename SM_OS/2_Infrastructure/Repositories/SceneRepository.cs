@@ -48,6 +48,8 @@ namespace SM_OS.Repositories
         // 3. U - Update
         public async Task<bool> UpdateSceneAsync(Scene scene)
         {
+            var oldActions = _context.SceneActions.Where(a => a.SceneId == scene.Id);
+            _context.SceneActions.RemoveRange(oldActions);
             _context.Scenes.Update(scene);
             return await _context.SaveChangesAsync() > 0;
         }
